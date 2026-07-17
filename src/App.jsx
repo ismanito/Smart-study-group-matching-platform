@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import { useAuth } from './context/AuthContext';
-import LandingPage from './pages/LandingPage';
-import RegisterPage from './pages/RegisterPage';
-import LoginPage from './pages/LoginPage';
-import Dashboard from './pages/Dashboard';
-import MatchPage from './pages/MatchPage';
+import Navbar from './components/Navbar.jsx';
+import { useAuth } from './context/AuthContext.jsx';
+import LandingPage from './pages/LandingPage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import MatchPage from './pages/MatchPage.jsx';
+import AdminDashboard from './pages/AdminDashboard.jsx';
 
 function GroupsPage() {
   return (
@@ -31,15 +32,6 @@ function SchedulePage() {
     <div className="p-6">
       <h2 className="text-3xl font-semibold text-slate-900">Schedule</h2>
       <p className="mt-3 text-slate-600">Keep track of your study sessions and course calendar.</p>
-    </div>
-  );
-}
-
-function AdminDashboard() {
-  return (
-    <div className="p-6">
-      <h2 className="text-3xl font-semibold text-slate-900">Admin Dashboard</h2>
-      <p className="mt-3 text-slate-600">Manage users, groups, and platform settings.</p>
     </div>
   );
 }

@@ -12,16 +12,19 @@ StudyMatch is a collaborative platform that connects students who share the same
 - **Landing Page**: Hero section with CTA buttons and feature highlights
 - **Authentication**: Secure login and registration with JWT token management
 - **Dashboard**: Overview of groups, matched peers, enrolled units, and recent activity
-- **Peer Matching**: Discover and invite classmates to join study groups based on shared units
-- **Unit Enrollment**: Browse available courses and enroll in new units
+- **Peer Matching**: Review classmates who share enrolled units and choose Match or Pass for each peer
+- **Unit Enrollment**: Browse available courses and enroll in the classes you choose
+- **Notes Library**: Upload, download, and delete your own course notes
 - **Responsive Navbar**: Navigation bar with mobile hamburger menu
 - **Modern UI**: Tailwind CSS styling with blue and white color scheme
 
 ### Backend (Node.js + Express)
-- RESTful API endpoints for authentication, groups, matches, and units
+- RESTful API endpoints for authentication, groups, matches, units, and notes
 - JWT-based authentication
 - User and group management
 - Unit enrollment tracking
+- Explicit peer Match/Pass decisions
+- Authenticated local note uploads and downloads
 - Activity logging
 
 ## 🛠️ Tech Stack
@@ -111,7 +114,8 @@ npm run preview
 | `/dashboard` | Dashboard | Yes | User dashboard with groups and stats |
 | `/groups` | GroupsPage | Yes | User's study groups |
 | `/groups/:id` | GroupDetailPage | Yes | Detailed group view |
-| `/match` | MatchPage | Yes | Peer matching interface |
+| `/match` | MatchPage | Yes | Review and choose peer matches |
+| `/notes` | NotesPage | Yes | Personal notes upload and library |
 | `/schedule` | SchedulePage | Yes | Schedule management |
 | `/admin` | AdminDashboard | Yes (Admin only) | Admin panel |
 
@@ -130,11 +134,21 @@ npm run preview
 - `POST /api/units/enroll` - Enroll in a unit
 
 ### Matching
-- `GET /api/match` - Get matched peers
-- `POST /api/invite` - Invite a peer to a group
+- `GET /api/match` - Get undecided peers sharing enrolled units
+- `GET /api/match/confirmed` - Get peers the current user chose to match with
+- `POST /api/match/decide` - Save a Match or Pass decision
+- `POST /api/invite` - Invite a confirmed peer to a joined group
 
 ### Groups
 - `GET /api/groups` - Get user's groups
+- `GET /api/groups/discoverable` - Browse available study groups
+- `POST /api/groups/:id/join` - Join a study group
+
+### Notes
+- `GET /api/notes` - List the current user's uploaded notes
+- `POST /api/notes` - Upload a PDF, Word, Markdown, or text note
+- `GET /api/notes/:id/download` - Download an owned note
+- `DELETE /api/notes/:id` - Delete an owned note
 
 ## 🔐 Authentication
 

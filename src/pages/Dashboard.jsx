@@ -126,7 +126,7 @@ export default function Dashboard() {
         <div className="rounded-3xl bg-white p-6 shadow-sm shadow-slate-200">
           <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Notes Uploaded</p>
           <p className="mt-4 text-4xl font-semibold text-slate-900">{loading ? '–' : summary.notes}</p>
-          <p className="mt-2 text-sm text-slate-500">Shared notes available across your study groups.</p>
+          <p className="mt-2 text-sm text-slate-500">Your uploaded course notes.</p>
         </div>
       </section>
 

@@ -5,8 +5,10 @@ import UnitBadge from '../components/UnitBadge';
 export default function MatchPage() {
   const { token } = useAuth();
   const [matches, setMatches] = useState([]);
+  const [confirmedMatches, setConfirmedMatches] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [decisionPeerId, setDecisionPeerId] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPeer, setSelectedPeer] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -18,18 +20,22 @@ export default function MatchPage() {
       setInviteState({ loading: false, error: '', success: '' });
 
       try {
-        const [matchRes, groupsRes] = await Promise.all([
+        const [matchRes, confirmedRes, groupsRes] = await Promise.all([
           fetch('/api/match', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/match/confirmed', { headers: { Authorization: `Bearer ${token}` } }),
           fetch('/api/groups', { headers: { Authorization: `Bearer ${token}` } }),
         ]);
 
         if (!matchRes.ok) throw new Error('Unable to load matches.');
+        if (!confirmedRes.ok) throw new Error('Unable to load your matched peers.');
         if (!groupsRes.ok) throw new Error('Unable to load your groups.');
 
         const matchData = await matchRes.json();
+        const confirmedData = await confirmedRes.json();
         const groupsData = await groupsRes.json();
 
         setMatches(Array.isArray(matchData) ? matchData : matchData.matches || []);
+        setConfirmedMatches(Array.isArray(confirmedData) ? confirmedData : confirmedData.matches || []);
         setGroups(Array.isArray(groupsData) ? groupsData : groupsData.groups || []);
       } catch (fetchError) {
         setInviteState((current) => ({ ...current, error: fetchError.message || 'Unable to load matches.' }));
@@ -40,6 +46,35 @@ export default function MatchPage() {
 
     loadMatches();
   }, [token]);
+
+  const decidePeer = async (peer, decision) => {
+    setDecisionPeerId(peer.id);
+    setInviteState({ loading: false, error: '', success: '' });
+
+    try {
+      const response = await fetch('/api/match/decide', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ peerId: peer.id, decision }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) throw new Error(payload.message || 'Unable to save your peer choice.');
+
+      setMatches((current) => current.filter((item) => item.id !== peer.id));
+      if (decision === 'match') {
+        setConfirmedMatches((current) => [...current, peer]);
+      }
+      setInviteState({ loading: false, error: '', success: payload.message || 'Your choice was saved.' });
+    } catch (decisionError) {
+      setInviteState({ loading: false, error: decisionError.message || 'Unable to save your peer choice.', success: '' });
+    } finally {
+      setDecisionPeerId(null);
+    }
+  };
 
   const openInviteModal = (peer) => {
     setSelectedPeer(peer);
@@ -102,7 +137,7 @@ export default function MatchPage() {
             <h1 className="mt-2 text-4xl font-semibold text-slate-900">Find your next study partner</h1>
           </div>
           <p className="max-w-xl text-sm text-slate-600">
-            Match with classmates based on shared units and learning goals. Invite the best peers directly into your groups.
+            Review classmates who share your courses. Choose Match or Pass for every person—nothing happens until you decide.
           </p>
         </div>
       </section>
@@ -125,9 +160,9 @@ export default function MatchPage() {
         </div>
       ) : noMatches ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center text-slate-700">
-          <p className="text-xl font-semibold text-slate-900">No matches yet</p>
+          <p className="text-xl font-semibold text-slate-900">No new peers to review</p>
           <p className="mt-3 text-slate-600">
-            Enroll in more units to find study partners who match your interests and schedule.
+            Enroll in more units to find additional classmates, or check your matches below.
           </p>
         </div>
       ) : (
@@ -139,12 +174,9 @@ export default function MatchPage() {
                   <h2 className="text-xl font-semibold text-slate-900">{peer.name}</h2>
                   <p className="mt-2 text-sm text-slate-600">{peer.email}</p>
                 </div>
-                <button
-                  onClick={() => openInviteModal(peer)}
-                  className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  Invite to Group
-                </button>
+                <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
+                  Potential match
+                </span>
               </div>
               <div className="mt-6 space-y-3">
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">Shared units</p>
@@ -156,9 +188,59 @@ export default function MatchPage() {
                   )}
                 </div>
               </div>
+              <div className="mt-7 grid grid-cols-2 gap-3 border-t border-slate-100 pt-5">
+                <button
+                  type="button"
+                  onClick={() => decidePeer(peer, 'pass')}
+                  disabled={decisionPeerId === peer.id}
+                  className="rounded-full bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {decisionPeerId === peer.id ? 'Saving…' : 'Pass'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => decidePeer(peer, 'match')}
+                  disabled={decisionPeerId === peer.id}
+                  className="rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                >
+                  {decisionPeerId === peer.id ? 'Saving…' : 'Match'}
+                </button>
+              </div>
             </div>
           ))}
         </div>
+      )}
+
+      {confirmedMatches.length > 0 && (
+        <section className="rounded-3xl bg-white p-8 shadow-sm shadow-slate-200">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-emerald-600">Your matches</p>
+              <h2 className="mt-2 text-3xl font-semibold text-slate-900">Peers you chose to connect with</h2>
+            </div>
+            <p className="max-w-md text-sm text-slate-600">Invite a confirmed match into one of your groups whenever you are ready.</p>
+          </div>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {confirmedMatches.map((peer) => (
+              <div key={peer.id} className="flex flex-col gap-5 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="text-xl font-semibold text-slate-900">{peer.name}</h3>
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Matched</span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">{peer.sharedUnits.join(' · ')}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openInviteModal(peer)}
+                  className="rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Invite to Group
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {modalOpen && selectedPeer && (

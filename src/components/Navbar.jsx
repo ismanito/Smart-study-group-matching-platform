@@ -16,6 +16,7 @@ function Navbar() {
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'My Groups', path: '/groups' },
     { label: 'Find Peers', path: '/match' },
+    { label: 'My Notes', path: '/notes' },
     { label: 'Schedule', path: '/schedule' },
   ];
 

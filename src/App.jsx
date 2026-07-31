@@ -7,16 +7,9 @@ import RegisterPage from './pages/RegisterPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import MatchPage from './pages/MatchPage.jsx';
+import GroupsPage from './pages/GroupsPage.jsx';
+import NotesPage from './pages/NotesPage.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
-
-function GroupsPage() {
-  return (
-    <div className="p-6">
-      <h2 className="text-3xl font-semibold text-slate-900">My Groups</h2>
-      <p className="mt-3 text-slate-600">Browse all your study groups and join the conversations.</p>
-    </div>
-  );
-}
 
 function GroupDetailPage() {
   return (
@@ -63,6 +56,7 @@ function App() {
             <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
             <Route path="/groups/:id" element={<RequireAuth><GroupDetailPage /></RequireAuth>} />
             <Route path="/match" element={<RequireAuth><MatchPage /></RequireAuth>} />
+            <Route path="/notes" element={<RequireAuth><NotesPage /></RequireAuth>} />
             <Route path="/schedule" element={<RequireAuth><SchedulePage /></RequireAuth>} />
             <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,33 +1,21 @@
-import { useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import MatchPage from './pages/MatchPage.jsx';
 import GroupsPage from './pages/GroupsPage.jsx';
+import GroupDetailPage from './pages/GroupDetailPage.jsx';
 import NotesPage from './pages/NotesPage.jsx';
+import CoursesPage from './pages/CoursesPage.jsx';
+import ReportIssuePage from './pages/ReportIssuePage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
+import SchedulePage from './pages/SchedulePage.jsx';
+import ConnectionsPage from './pages/ConnectionsPage.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
-
-function GroupDetailPage() {
-  return (
-    <div className="p-6">
-      <h2 className="text-3xl font-semibold text-slate-900">Group details</h2>
-      <p className="mt-3 text-slate-600">Explore the group description, members, and upcoming sessions.</p>
-    </div>
-  );
-}
-
-function SchedulePage() {
-  return (
-    <div className="p-6">
-      <h2 className="text-3xl font-semibold text-slate-900">Schedule</h2>
-      <p className="mt-3 text-slate-600">Keep track of your study sessions and course calendar.</p>
-    </div>
-  );
-}
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -40,28 +28,28 @@ function RequireAdmin({ children }) {
 }
 
 function App() {
-  const auth = useAuth();
-  const authReady = useMemo(() => !!auth, [auth]);
-
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {authReady && (
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
-            <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
-            <Route path="/groups/:id" element={<RequireAuth><GroupDetailPage /></RequireAuth>} />
-            <Route path="/match" element={<RequireAuth><MatchPage /></RequireAuth>} />
-            <Route path="/notes" element={<RequireAuth><NotesPage /></RequireAuth>} />
-            <Route path="/schedule" element={<RequireAuth><SchedulePage /></RequireAuth>} />
-            <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        )}
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
+          <Route path="/groups/:id" element={<RequireAuth><GroupDetailPage /></RequireAuth>} />
+          <Route path="/match" element={<RequireAuth><MatchPage /></RequireAuth>} />
+          <Route path="/notes" element={<RequireAuth><NotesPage /></RequireAuth>} />
+          <Route path="/courses" element={<RequireAuth><CoursesPage /></RequireAuth>} />
+          <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+          <Route path="/connections" element={<RequireAuth><ConnectionsPage /></RequireAuth>} />
+          <Route path="/report" element={<RequireAuth><ReportIssuePage /></RequireAuth>} />
+          <Route path="/schedule" element={<RequireAuth><SchedulePage /></RequireAuth>} />
+          <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
     </div>
   );

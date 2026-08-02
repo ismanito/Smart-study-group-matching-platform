@@ -1,19 +1,31 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import { INTEREST_OPTIONS, STUDY_METHOD_OPTIONS } from '../data/studyPrefs.js';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user, isAdmin } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'Student',
+    interests: [],
+    studyMethods: [],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      navigate(isAdmin() ? '/admin' : '/dashboard', { replace: true });
+    }
+  }, [user, isAdmin, navigate]);
+
+  if (user) {
+    return <Navigate to={isAdmin() ? '/admin' : '/dashboard'} replace />;
+  }
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -29,6 +41,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch('/api/auth/register', {
@@ -40,7 +57,9 @@ export default function RegisterPage() {
           name: formData.fullName,
           email: formData.email,
           password: formData.password,
-          role: formData.role.toLowerCase(),
+          role: 'student',
+          interests: formData.interests,
+          studyMethods: formData.studyMethods,
         }),
       });
 
@@ -56,9 +75,9 @@ export default function RegisterPage() {
       }
 
       login(payload.token);
-      navigate('/dashboard');
+      navigate('/profile');
     } catch (fetchError) {
-      setError('Unable to connect to the server. Please try again later.');
+      setError(fetchError.message || 'Unable to connect to the server. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -116,6 +135,7 @@ export default function RegisterPage() {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength={6}
                 className="mt-2 block w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
             </div>
@@ -130,25 +150,66 @@ export default function RegisterPage() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
+                minLength={6}
                 className="mt-2 block w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="role" className="block text-sm font-medium text-slate-700">
-              Role
-            </label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="mt-2 block w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            >
-              <option>Student</option>
-              <option>Admin</option>
-            </select>
+            <p className="text-sm font-medium text-slate-700">Interests (pick a few)</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {INTEREST_OPTIONS.slice(0, 6).map((interest) => {
+                const active = formData.interests.includes(interest);
+                return (
+                  <button
+                    key={interest}
+                    type="button"
+                    onClick={() =>
+                      setFormData((current) => ({
+                        ...current,
+                        interests: active
+                          ? current.interests.filter((item) => item !== interest)
+                          : [...current.interests, interest].slice(0, 5),
+                      }))
+                    }
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                      active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    {interest}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-slate-700">Study methods</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {STUDY_METHOD_OPTIONS.slice(0, 6).map((method) => {
+                const active = formData.studyMethods.includes(method);
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() =>
+                      setFormData((current) => ({
+                        ...current,
+                        studyMethods: active
+                          ? current.studyMethods.filter((item) => item !== method)
+                          : [...current.studyMethods, method].slice(0, 5),
+                      }))
+                    }
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                      active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    {method}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {error && (

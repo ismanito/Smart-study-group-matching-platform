@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import UnitBadge from '../components/UnitBadge';
-import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+import UnitBadge from '../components/UnitBadge.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const formatMemberCount = (count) => `${count} ${count === 1 ? 'member' : 'members'}`;
 
@@ -129,21 +130,29 @@ export default function GroupsPage() {
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Next session</p>
                   <p className="mt-1 text-sm font-semibold text-slate-700">{group.nextSession || 'Schedule coming soon'}</p>
                 </div>
-                {group.isMember ? (
-                  <span className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-100 px-5 py-2.5 text-sm font-semibold text-emerald-700">
-                    <span aria-hidden="true">✓</span>
-                    Joined
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => joinGroup(group.id)}
-                    disabled={actionGroupId === group.id}
-                    className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    to={`/groups/${group.id}`}
+                    className="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700"
                   >
-                    {actionGroupId === group.id ? 'Joining…' : 'Join group'}
-                  </button>
-                )}
+                    View details
+                  </Link>
+                  {group.isMember ? (
+                    <span className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-100 px-5 py-2.5 text-sm font-semibold text-emerald-700">
+                      <span aria-hidden="true">✓</span>
+                      Joined
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => joinGroup(group.id)}
+                      disabled={actionGroupId === group.id}
+                      className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                    >
+                      {actionGroupId === group.id ? 'Joining…' : 'Join group'}
+                    </button>
+                  )}
+                </div>
               </div>
             </article>
           ))}

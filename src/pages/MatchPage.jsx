@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import UnitBadge from '../components/UnitBadge';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import UnitBadge from '../components/UnitBadge.jsx';
 
 export default function MatchPage() {
   const { token } = useAuth();
@@ -30,13 +31,9 @@ export default function MatchPage() {
         if (!confirmedRes.ok) throw new Error('Unable to load your matched peers.');
         if (!groupsRes.ok) throw new Error('Unable to load your groups.');
 
-        const matchData = await matchRes.json();
-        const confirmedData = await confirmedRes.json();
-        const groupsData = await groupsRes.json();
-
-        setMatches(Array.isArray(matchData) ? matchData : matchData.matches || []);
-        setConfirmedMatches(Array.isArray(confirmedData) ? confirmedData : confirmedData.matches || []);
-        setGroups(Array.isArray(groupsData) ? groupsData : groupsData.groups || []);
+        setMatches(await matchRes.json());
+        setConfirmedMatches(await confirmedRes.json());
+        setGroups(await groupsRes.json());
       } catch (fetchError) {
         setInviteState((current) => ({ ...current, error: fetchError.message || 'Unable to load matches.' }));
       } finally {
@@ -66,7 +63,14 @@ export default function MatchPage() {
 
       setMatches((current) => current.filter((item) => item.id !== peer.id));
       if (decision === 'match') {
-        setConfirmedMatches((current) => [...current, peer]);
+        setConfirmedMatches((current) => [
+          ...current,
+          {
+            ...peer,
+            mutual: payload.mutual,
+            connected: payload.mutual,
+          },
+        ]);
       }
       setInviteState({ loading: false, error: '', success: payload.message || 'Your choice was saved.' });
     } catch (decisionError) {
@@ -78,7 +82,7 @@ export default function MatchPage() {
 
   const openInviteModal = (peer) => {
     setSelectedPeer(peer);
-    setSelectedGroup(groups[0]?.id ?? groups[0]?.groupId ?? '');
+    setSelectedGroup(groups[0]?.id ?? '');
     setInviteState({ loading: false, error: '', success: '' });
     setModalOpen(true);
   };
@@ -87,7 +91,6 @@ export default function MatchPage() {
     setModalOpen(false);
     setSelectedPeer(null);
     setSelectedGroup('');
-    setInviteState({ loading: false, error: '', success: '' });
   };
 
   const sendInvite = async () => {
@@ -108,102 +111,117 @@ export default function MatchPage() {
         body: JSON.stringify({ peerId: selectedPeer.id, groupId: selectedGroup }),
       });
 
-      if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(payload.message || 'Unable to send the invitation.');
-      }
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || 'Unable to send the invitation.');
 
-      setInviteState({ loading: false, error: '', success: 'Invitation sent successfully!' });
+      setInviteState({ loading: false, error: '', success: payload.message || 'Peer added to the group.' });
+      if (payload.group) {
+        setGroups((current) => {
+          const exists = current.some((group) => group.id === payload.group.id);
+          return exists
+            ? current.map((group) => (group.id === payload.group.id ? payload.group : group))
+            : [...current, payload.group];
+        });
+      }
     } catch (fetchError) {
       setInviteState({ loading: false, error: fetchError.message || 'Unable to send the invitation.', success: '' });
     }
   };
 
-  const noMatches = !loading && matches.length === 0;
-  const peerCards = useMemo(
-    () => matches.map((peer) => ({
-      ...peer,
-      sharedUnits: peer.sharedUnits ?? peer.units ?? [],
-    })),
-    [matches]
-  );
+  const peerCards = useMemo(() => matches, [matches]);
+  const connected = confirmedMatches.filter((peer) => peer.mutual || peer.connected);
+  const waiting = confirmedMatches.filter((peer) => !(peer.mutual || peer.connected));
 
   return (
     <div className="space-y-8">
       <section className="rounded-3xl bg-white p-8 shadow-sm shadow-slate-200">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-blue-600">Peer matching</p>
-            <h1 className="mt-2 text-4xl font-semibold text-slate-900">Find your next study partner</h1>
+            <p className="text-sm uppercase tracking-[0.3em] text-blue-600">Smart matching</p>
+            <h1 className="mt-2 text-4xl font-semibold text-slate-900">Find classmates who study like you</h1>
           </div>
           <p className="max-w-xl text-sm text-slate-600">
-            Review classmates who share your courses. Choose Match or Pass for every person—nothing happens until you decide.
+            Ranked by shared courses, interests, study methods, and overlapping free time. Connect when both of you match.
           </p>
         </div>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link to="/profile" className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">Update preferences</Link>
+          <Link to="/connections" className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">View connections</Link>
+        </div>
       </section>
+
+      {inviteState.error && (
+        <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">{inviteState.error}</div>
+      )}
+      {inviteState.success && (
+        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">{inviteState.success}</div>
+      )}
 
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="animate-pulse rounded-3xl bg-white p-8 shadow-sm shadow-slate-200">
-              <div className="h-10 w-1/3 rounded-full bg-slate-200" />
-              <div className="mt-6 space-y-4">
-                <div className="h-5 rounded-full bg-slate-200" />
-                <div className="h-5 rounded-full bg-slate-200 w-4/5" />
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div className="h-9 rounded-full bg-slate-200" />
-                  <div className="h-9 rounded-full bg-slate-200" />
-                </div>
-              </div>
-            </div>
+            <div key={index} className="h-64 animate-pulse rounded-3xl bg-white shadow-sm" />
           ))}
         </div>
-      ) : noMatches ? (
+      ) : peerCards.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center text-slate-700">
           <p className="text-xl font-semibold text-slate-900">No new peers to review</p>
           <p className="mt-3 text-slate-600">
-            Enroll in more units to find additional classmates, or check your matches below.
+            Enroll in courses and set interests/methods on your profile to unlock better matches.
           </p>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {peerCards.map((peer) => (
-            <div key={peer.id} className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm shadow-slate-200">
-              <div className="flex items-start justify-between gap-4">
+            <div key={peer.id} className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900">{peer.name}</h2>
-                  <p className="mt-2 text-sm text-slate-600">{peer.email}</p>
+                  <p className="mt-1 text-sm text-slate-600">{peer.email}</p>
                 </div>
-                <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
-                  Potential match
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                  Score {peer.score || 0}
                 </span>
               </div>
-              <div className="mt-6 space-y-3">
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">Shared units</p>
-                <div className="flex flex-wrap gap-2">
-                  {peer.sharedUnits.length > 0 ? (
-                    peer.sharedUnits.map((unit) => <UnitBadge key={unit} code={unit} />)
-                  ) : (
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-500">No shared units yet</span>
-                  )}
+              {peer.bio && <p className="mt-4 text-sm text-slate-600">{peer.bio}</p>}
+              {peer.theyMatchedYou && (
+                <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700">
+                  They already want to connect with you
+                </p>
+              )}
+              <div className="mt-5 space-y-3 text-sm">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Shared courses</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(peer.sharedUnits || []).length > 0
+                      ? peer.sharedUnits.map((unit) => <UnitBadge key={unit} code={unit} />)
+                      : <span className="text-slate-500">None</span>}
+                  </div>
                 </div>
+                <p><span className="font-semibold text-slate-800">Interests:</span> {(peer.sharedInterests || []).join(', ') || '—'}</p>
+                <p><span className="font-semibold text-slate-800">Methods:</span> {(peer.sharedMethods || []).join(', ') || '—'}</p>
+                {(peer.scheduleOverlaps || [])[0] && (
+                  <p className="font-semibold text-emerald-700">
+                    Overlap: {peer.scheduleOverlaps[0].day} {peer.scheduleOverlaps[0].start}–{peer.scheduleOverlaps[0].end}
+                  </p>
+                )}
               </div>
-              <div className="mt-7 grid grid-cols-2 gap-3 border-t border-slate-100 pt-5">
+              <div className="mt-6 grid grid-cols-2 gap-3 border-t border-slate-100 pt-5">
                 <button
                   type="button"
                   onClick={() => decidePeer(peer, 'pass')}
                   disabled={decisionPeerId === peer.id}
-                  className="rounded-full bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-full bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60"
                 >
-                  {decisionPeerId === peer.id ? 'Saving…' : 'Pass'}
+                  Pass
                 </button>
                 <button
                   type="button"
                   onClick={() => decidePeer(peer, 'match')}
                   disabled={decisionPeerId === peer.id}
-                  className="rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  className="rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-400"
                 >
-                  {decisionPeerId === peer.id ? 'Saving…' : 'Match'}
+                  {decisionPeerId === peer.id ? 'Saving…' : 'Connect'}
                 </button>
               </div>
             </div>
@@ -211,32 +229,39 @@ export default function MatchPage() {
         </div>
       )}
 
-      {confirmedMatches.length > 0 && (
-        <section className="rounded-3xl bg-white p-8 shadow-sm shadow-slate-200">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-emerald-600">Your matches</p>
-              <h2 className="mt-2 text-3xl font-semibold text-slate-900">Peers you chose to connect with</h2>
-            </div>
-            <p className="max-w-md text-sm text-slate-600">Invite a confirmed match into one of your groups whenever you are ready.</p>
-          </div>
+      {connected.length > 0 && (
+        <section className="rounded-3xl bg-white p-8 shadow-sm">
+          <h2 className="text-3xl font-semibold text-slate-900">Connected classmates</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {confirmedMatches.map((peer) => (
-              <div key={peer.id} className="flex flex-col gap-5 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-xl font-semibold text-slate-900">{peer.name}</h3>
-                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Matched</span>
+            {connected.map((peer) => (
+              <div key={peer.id} className="rounded-3xl border border-emerald-100 bg-emerald-50/40 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">{peer.name}</h3>
+                    <p className="text-sm text-slate-600">{(peer.sharedUnits || []).join(' · ')}</p>
                   </div>
-                  <p className="mt-2 text-sm text-slate-600">{peer.sharedUnits.join(' · ')}</p>
+                  <button
+                    type="button"
+                    onClick={() => openInviteModal(peer)}
+                    className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Invite to group
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openInviteModal(peer)}
-                  className="rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  Invite to Group
-                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {waiting.length > 0 && (
+        <section className="rounded-3xl bg-white p-8 shadow-sm">
+          <h2 className="text-2xl font-semibold text-slate-900">Waiting for them to connect back</h2>
+          <div className="mt-4 space-y-3">
+            {waiting.map((peer) => (
+              <div key={peer.id} className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4">
+                <p className="font-semibold text-slate-900">{peer.name}</p>
+                <p className="text-sm text-slate-600">They need to press Connect on your profile for notes & schedule sharing.</p>
               </div>
             ))}
           </div>
@@ -246,76 +271,38 @@ export default function MatchPage() {
       {modalOpen && selectedPeer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-6">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-8 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-blue-600">Invite {selectedPeer.name}</p>
-                <h2 className="mt-2 text-3xl font-semibold text-slate-900">Choose a group</h2>
-              </div>
+            <h2 className="text-3xl font-semibold text-slate-900">Invite {selectedPeer.name}</h2>
+            <div className="mt-6 space-y-3">
+              {groups.length > 0 ? (
+                groups.map((group) => (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => setSelectedGroup(group.id)}
+                    className={`w-full rounded-3xl border px-4 py-4 text-left ${
+                      selectedGroup === group.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-slate-50'
+                    }`}
+                  >
+                    <p className="font-semibold">{group.name}</p>
+                    <p className="mt-1 text-sm text-slate-500">{group.description}</p>
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm text-slate-600">
+                  Join a group on the <Link to="/groups" className="font-semibold text-blue-600">Groups</Link> page first.
+                </p>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={closeModal} className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold">Cancel</button>
               <button
                 type="button"
-                onClick={closeModal}
-                className="rounded-full bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200"
+                onClick={sendInvite}
+                disabled={inviteState.loading || groups.length === 0}
+                className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:bg-slate-400"
               >
-                ✕
+                {inviteState.loading ? 'Sending…' : 'Send invite'}
               </button>
-            </div>
-
-            <div className="mt-6 space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Your groups</label>
-                <div className="mt-3 grid gap-3">
-                  {groups.length > 0 ? (
-                    groups.map((group) => (
-                      <button
-                        key={group.id}
-                        type="button"
-                        onClick={() => setSelectedGroup(group.id)}
-                        className={`w-full rounded-3xl border px-4 py-4 text-left transition ${
-                          selectedGroup === group.id
-                            ? 'border-blue-600 bg-blue-50 text-slate-900'
-                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-400'
-                        }`}
-                      >
-                        <p className="font-semibold">{group.name ?? group.title ?? 'Study Group'}</p>
-                        <p className="mt-1 text-sm text-slate-500">{group.description ?? 'Invite this peer to join your group.'}</p>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-                      You don’t have any groups yet. Create one to send invitations.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {inviteState.error && (
-                <div className="rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {inviteState.error}
-                </div>
-              )}
-              {inviteState.success && (
-                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                  {inviteState.success}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={sendInvite}
-                  disabled={inviteState.loading || groups.length === 0}
-                  className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                >
-                  {inviteState.loading ? 'Sending…' : 'Send Invite'}
-                </button>
-              </div>
             </div>
           </div>
         </div>

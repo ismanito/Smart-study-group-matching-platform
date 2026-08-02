@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import UnitBadge from '../components/UnitBadge';
-import { useAuth } from '../context/AuthContext';
+import UnitBadge from '../components/UnitBadge.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const MAX_NOTE_SIZE = 10 * 1024 * 1024;
 const acceptedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.md'];
-const emptyForm = { title: '', unitId: '' };
+const emptyForm = { title: '', unitId: '', visibility: 'connections', groupId: '' };
 
 const formatFileSize = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;
@@ -24,7 +24,9 @@ export default function NotesPage() {
   const { token } = useAuth();
   const fileInputRef = useRef(null);
   const [units, setUnits] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [sharedNotes, setSharedNotes] = useState([]);
   const [formData, setFormData] = useState(emptyForm);
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,21 +43,34 @@ export default function NotesPage() {
       setError('');
 
       try {
-        const [unitsResponse, notesResponse] = await Promise.all([
+        const [unitsResponse, notesResponse, sharedResponse, groupsResponse] = await Promise.all([
           fetch('/api/units', { headers: { Authorization: `Bearer ${token}` } }),
           fetch('/api/notes', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/notes/shared', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/groups', { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         const unitsPayload = await unitsResponse.json();
         const notesPayload = await notesResponse.json();
+        const sharedPayload = await sharedResponse.json();
+        const groupsPayload = await groupsResponse.json();
 
         if (!unitsResponse.ok) throw new Error(unitsPayload.message || 'Unable to load your courses.');
         if (!notesResponse.ok) throw new Error(notesPayload.message || 'Unable to load your notes.');
+        if (!sharedResponse.ok) throw new Error(sharedPayload.message || 'Unable to load shared notes.');
+        if (!groupsResponse.ok) throw new Error(groupsPayload.message || 'Unable to load groups.');
 
         const enrolledUnits = (Array.isArray(unitsPayload) ? unitsPayload : unitsPayload.units || [])
           .filter((unit) => unit.enrolled);
+        const myGroups = Array.isArray(groupsPayload) ? groupsPayload : [];
         setUnits(enrolledUnits);
+        setGroups(myGroups);
         setNotes(Array.isArray(notesPayload) ? notesPayload : notesPayload.notes || []);
-        setFormData((current) => ({ ...current, unitId: current.unitId || String(enrolledUnits[0]?.id || '') }));
+        setSharedNotes(Array.isArray(sharedPayload) ? sharedPayload : []);
+        setFormData((current) => ({
+          ...current,
+          unitId: current.unitId || String(enrolledUnits[0]?.id || ''),
+          groupId: current.groupId || myGroups[0]?.id || '',
+        }));
       } catch (fetchError) {
         setError(fetchError.message || 'Unable to load your notes.');
       } finally {
@@ -108,6 +123,8 @@ export default function NotesPage() {
     const payload = new FormData();
     payload.append('title', formData.title.trim());
     payload.append('unitId', formData.unitId);
+    payload.append('visibility', formData.visibility);
+    if (formData.visibility === 'group') payload.append('groupId', formData.groupId);
     payload.append('file', file);
 
     try {
@@ -121,7 +138,12 @@ export default function NotesPage() {
       if (!response.ok) throw new Error(responseData.message || 'Unable to upload this note.');
 
       setNotes((current) => [responseData.note, ...current]);
-      setFormData((current) => ({ ...emptyForm, unitId: current.unitId }));
+      setFormData((current) => ({
+        ...emptyForm,
+        unitId: current.unitId,
+        visibility: current.visibility,
+        groupId: current.groupId,
+      }));
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       setSuccess(responseData.message || 'Note uploaded successfully.');
@@ -193,13 +215,13 @@ export default function NotesPage() {
         <p className="text-sm uppercase tracking-[0.3em] text-violet-600">My notes</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-4xl font-semibold text-slate-900">Keep your study library close</h1>
+            <h1 className="text-4xl font-semibold text-slate-900">Share study notes</h1>
             <p className="mt-3 max-w-2xl leading-6 text-slate-600">
-              Upload your own course notes, keep them organized by class, and download them whenever you need a refresher.
+              Keep private files for yourself, or share with connections and study groups so classmates can download them.
             </p>
           </div>
           <span className="w-fit rounded-full bg-violet-100 px-4 py-2 text-sm font-semibold text-violet-700">
-            {notes.length} {notes.length === 1 ? 'note' : 'notes'}
+            {notes.length} mine · {sharedNotes.length} shared with you
           </span>
         </div>
       </section>
@@ -283,6 +305,38 @@ export default function NotesPage() {
               )}
             </div>
 
+            <div>
+              <label htmlFor="note-visibility" className="block text-sm font-medium text-slate-700">Who can see this</label>
+              <select
+                id="note-visibility"
+                value={formData.visibility}
+                onChange={(event) => setFormData((current) => ({ ...current, visibility: event.target.value }))}
+                className="mt-2 block w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+              >
+                <option value="private">Only me</option>
+                <option value="connections">My connections</option>
+                <option value="group">A study group</option>
+              </select>
+            </div>
+
+            {formData.visibility === 'group' && (
+              <div>
+                <label htmlFor="note-group" className="block text-sm font-medium text-slate-700">Study group</label>
+                <select
+                  id="note-group"
+                  value={formData.groupId}
+                  onChange={(event) => setFormData((current) => ({ ...current, groupId: event.target.value }))}
+                  className="mt-2 block w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3"
+                  required
+                >
+                  <option value="">Select a group</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>{group.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={uploading || units.length === 0}
@@ -299,7 +353,7 @@ export default function NotesPage() {
               <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Personal library</p>
               <h2 className="mt-3 text-2xl font-semibold text-slate-900">Your uploaded notes</h2>
             </div>
-            <p className="text-sm text-slate-500">Only you can view these files.</p>
+            <p className="text-sm text-slate-500">Private, connections, or group visibility.</p>
           </div>
 
           <div className="mt-7 space-y-3">
@@ -317,6 +371,9 @@ export default function NotesPage() {
                     <div className="flex flex-wrap items-center gap-3">
                       <h3 className="truncate text-lg font-semibold text-slate-900">{note.title}</h3>
                       <UnitBadge code={note.unitCode} />
+                      <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                        {note.visibility || 'private'}
+                      </span>
                     </div>
                     <p className="mt-2 truncate text-sm text-slate-600">{note.filename}</p>
                     <p className="mt-2 text-xs uppercase tracking-[0.16em] text-slate-400">
@@ -352,6 +409,38 @@ export default function NotesPage() {
           </div>
         </section>
       </div>
+
+      <section className="rounded-3xl bg-white p-8 shadow-sm shadow-slate-200">
+        <p className="text-sm uppercase tracking-[0.28em] text-emerald-600">From your network</p>
+        <h2 className="mt-3 text-2xl font-semibold text-slate-900">Notes shared with you</h2>
+        <div className="mt-6 space-y-3">
+          {sharedNotes.length > 0 ? (
+            sharedNotes.map((note) => (
+              <article key={note.id} className="flex flex-col gap-4 rounded-3xl border border-emerald-100 bg-emerald-50/40 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="text-lg font-semibold text-slate-900">{note.title}</h3>
+                    <UnitBadge code={note.unitCode} />
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">Shared by {note.uploaderName} · {note.filename}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => downloadNote(note)}
+                  disabled={downloadingNoteId === note.id}
+                  className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  {downloadingNoteId === note.id ? 'Downloading…' : 'Download'}
+                </button>
+              </article>
+            ))
+          ) : (
+            <p className="text-slate-600">
+              When connected classmates share notes with connections or groups you join, they appear here.
+            </p>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

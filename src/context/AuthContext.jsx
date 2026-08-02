@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 
 const AuthContext = createContext(null);
 const TOKEN_KEY = 'studyMatchToken';
@@ -10,7 +10,7 @@ function decodeJwt(token) {
     const jsonPayload = decodeURIComponent(
       atob(normalized)
         .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
         .join('')
     );
     const parsed = JSON.parse(jsonPayload);
@@ -20,31 +20,35 @@ function decodeJwt(token) {
   }
 }
 
-export function AuthProvider({ children }) {
-  const [token, setToken] = useState(null);
-  const [user, setUser] = useState(null);
+function readStoredSession() {
+  const storedToken = localStorage.getItem(TOKEN_KEY);
+  if (!storedToken) {
+    return { token: null, user: null };
+  }
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem(TOKEN_KEY);
-    if (storedToken) {
-      const decoded = decodeJwt(storedToken);
-      if (decoded) {
-        setToken(storedToken);
-        setUser(decoded);
-      } else {
-        localStorage.removeItem(TOKEN_KEY);
-      }
-    }
-  }, []);
+  const decoded = decodeJwt(storedToken);
+  if (!decoded) {
+    localStorage.removeItem(TOKEN_KEY);
+    return { token: null, user: null };
+  }
+
+  return { token: storedToken, user: decoded };
+}
+
+export function AuthProvider({ children }) {
+  const initialSession = readStoredSession();
+  const [token, setToken] = useState(initialSession.token);
+  const [user, setUser] = useState(initialSession.user);
 
   const login = (newToken) => {
     const decoded = decodeJwt(newToken);
     if (!decoded) {
-      return;
+      throw new Error('Received an invalid authentication token.');
     }
     localStorage.setItem(TOKEN_KEY, newToken);
     setToken(newToken);
     setUser(decoded);
+    return decoded;
   };
 
   const logout = () => {
@@ -59,7 +63,7 @@ export function AuthProvider({ children }) {
   };
 
   const value = useMemo(
-    () => ({ token, user, login, logout, isAdmin }),
+    () => ({ token, user, login, logout, isAdmin, ready: true }),
     [token, user]
   );
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import UnitBadge from '../components/UnitBadge';
+import { useAuth } from '../context/AuthContext.jsx';
+import UnitBadge from '../components/UnitBadge.jsx';
 
 export default function Dashboard() {
   const { user, token } = useAuth();
@@ -119,9 +119,9 @@ export default function Dashboard() {
           <p className="mt-2 text-sm text-slate-500">Active groups you’re a member of.</p>
         </div>
         <div className="rounded-3xl bg-white p-6 shadow-sm shadow-slate-200">
-          <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Matched Peers</p>
+          <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Connections</p>
           <p className="mt-4 text-4xl font-semibold text-slate-900">{loading ? '–' : summary.peers}</p>
-          <p className="mt-2 text-sm text-slate-500">Peers matched to your courses and study style.</p>
+          <p className="mt-2 text-sm text-slate-500">Mutual classmates you can study with.</p>
         </div>
         <div className="rounded-3xl bg-white p-6 shadow-sm shadow-slate-200">
           <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Notes Uploaded</p>

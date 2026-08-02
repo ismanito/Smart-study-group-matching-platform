@@ -83,18 +83,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-20 sm:px-10">
-        <div className="mb-12 text-center">
-          <p className="text-sm uppercase tracking-[0.32em] text-sky-500">Features</p>
+      <section className="bg-white px-6 py-20 sm:px-10">
+        <div className="mx-auto mb-12 max-w-7xl text-center">
+          <p className="text-sm uppercase tracking-[0.32em] text-sky-600">Features</p>
           <h2 className="mt-4 text-4xl font-bold text-slate-900">Everything you need for collaborative study.</h2>
-          <p className="mt-4 max-w-2xl mx-auto text-lg text-slate-600">
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
             From finding the best study matches to keeping shared notes and organizing meetings, StudyMatch keeps your team moving forward.
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-3">
           {features.map((feature) => (
-            <div key={feature.title} className="rounded-3xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/50 transition hover:-translate-y-1 hover:shadow-xl">
+            <div key={feature.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-8 shadow-lg shadow-slate-200/50 transition hover:-translate-y-1 hover:shadow-xl">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-50 text-3xl">
                 {feature.icon}
               </div>

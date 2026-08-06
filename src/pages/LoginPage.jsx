@@ -72,59 +72,56 @@ export default function LoginPage() {
   const isAdminLogin = loginAs === 'admin';
 
   return (
-    <div className="min-h-screen bg-slate-50 py-16 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-3xl rounded-3xl bg-white p-10 shadow-xl shadow-slate-200">
-        <div className="mb-8 text-center">
-          <p className={`text-sm uppercase tracking-[0.3em] ${isAdminLogin ? 'text-violet-600' : 'text-blue-600'}`}>
-            Welcome back
-          </p>
-          <h1 className="mt-4 text-4xl font-bold text-slate-900">
-            {isAdminLogin ? 'Admin login' : 'Student login'}
+    <div className="py-10">
+      <div className="mx-auto w-full max-w-xl rounded-2xl border border-paper-line bg-paper-card p-8 shadow-soft sm:p-10">
+        <div className="mb-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-pine">Welcome back</p>
+          <h1 className="mt-3 font-display text-4xl font-semibold text-ink">
+            {isAdminLogin ? 'Admin sign in' : 'Student sign in'}
           </h1>
-          <p className="mt-3 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-ink-muted">
             {isAdminLogin
               ? 'Manage students, courses, password OTPs, and platform issues.'
               : 'Access your courses, peers, notes, and study schedule.'}
           </p>
         </div>
 
-        <div className="mb-8 grid grid-cols-2 gap-3 rounded-3xl bg-slate-100 p-2">
+        <div className="mb-6 grid grid-cols-2 gap-2 rounded-lg bg-paper p-1">
           <button
             type="button"
             onClick={() => switchRole('student')}
-            className={`rounded-3xl px-4 py-3 text-sm font-semibold transition ${
-              !isAdminLogin ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white'
+            className={`rounded-md px-4 py-2.5 text-sm font-semibold transition ${
+              !isAdminLogin ? 'bg-pine text-paper-card' : 'text-ink-muted hover:bg-paper-card'
             }`}
           >
-            Student Login
+            Student
           </button>
           <button
             type="button"
             onClick={() => switchRole('admin')}
-            className={`rounded-3xl px-4 py-3 text-sm font-semibold transition ${
-              isAdminLogin ? 'bg-violet-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white'
+            className={`rounded-md px-4 py-2.5 text-sm font-semibold transition ${
+              isAdminLogin ? 'bg-pine text-paper-card' : 'text-ink-muted hover:bg-paper-card'
             }`}
           >
-            Admin Login
+            Admin
           </button>
         </div>
 
-        <p className="mb-6 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+        <p className="mb-6 rounded-lg border border-paper-line bg-paper px-4 py-3 text-sm text-ink-muted">
           {isAdminLogin ? (
             <>
-              Demo admin: <span className="font-medium text-slate-700">admin@studymatch.com / admin123</span>
+              Demo admin: <span className="font-medium text-ink">admin@studymatch.com / admin123</span>
             </>
           ) : (
             <>
-              Register a student account, or try{' '}
-              <span className="font-medium text-slate-700">maya@example.com / password123</span>
+              Try <span className="font-medium text-ink">maya@example.com / password123</span>
             </>
           )}
         </p>
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="email" className="block text-sm font-medium text-ink-soft">
               {isAdminLogin ? 'Admin email' : 'Student email'}
             </label>
             <input
@@ -134,14 +131,12 @@ export default function LoginPage() {
               value={formData.email}
               onChange={handleChange}
               required
-              className={`mt-2 block w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm focus:outline-none focus:ring-2 ${
-                isAdminLogin ? 'focus:border-violet-500 focus:ring-violet-100' : 'focus:border-blue-500 focus:ring-blue-100'
-              }`}
+              className="mt-2 block w-full rounded-md border border-paper-line bg-paper px-4 py-3 text-ink shadow-sm focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/20"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="password" className="block text-sm font-medium text-ink-soft">
               Password
             </label>
             <input
@@ -151,58 +146,45 @@ export default function LoginPage() {
               value={formData.password}
               onChange={handleChange}
               required
-              className={`mt-2 block w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 shadow-sm focus:outline-none focus:ring-2 ${
-                isAdminLogin ? 'focus:border-violet-500 focus:ring-violet-100' : 'focus:border-blue-500 focus:ring-blue-100'
-              }`}
+              className="mt-2 block w-full rounded-md border border-paper-line bg-paper px-4 py-3 text-ink shadow-sm focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/20"
             />
             {!isAdminLogin && (
-              <div className="mt-3 flex flex-col items-end gap-1 text-right">
-                <Link to="/forgot-password" className="text-sm font-semibold text-blue-600 hover:text-blue-700">
+              <div className="mt-3 flex justify-end">
+                <Link to="/forgot-password" className="text-sm font-semibold text-pine hover:text-pine-deep">
                   Forgot password?
                 </Link>
-                <p className="text-xs text-slate-500">Works without logging in — OTP arrives as a page notification.</p>
               </div>
             )}
           </div>
 
           {error && (
-            <p className="rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+            <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className={`inline-flex w-full items-center justify-center rounded-3xl px-6 py-4 text-base font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-slate-400 ${
-              isAdminLogin ? 'bg-violet-600 hover:bg-violet-700' : 'bg-blue-600 hover:bg-blue-700'
-            }`}
+            className="inline-flex w-full items-center justify-center rounded-md bg-pine px-6 py-3.5 text-base font-semibold text-paper-card transition hover:bg-pine-deep disabled:cursor-not-allowed disabled:bg-ink-muted"
           >
-            {loading ? (
-              <span className="flex items-center gap-3">
-                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Signing in...
-              </span>
-            ) : isAdminLogin ? (
-              'Sign in as Admin'
-            ) : (
-              'Sign in as Student'
-            )}
+            {loading ? 'Signing in…' : isAdminLogin ? 'Sign in as Admin' : 'Sign in as Student'}
           </button>
         </form>
 
-        <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-6 text-sm text-slate-600 sm:flex-row">
+        <div className="mt-8 border-t border-paper-line pt-6 text-sm text-ink-muted">
           {isAdminLogin ? (
-            <p>Need the student portal instead?</p>
+            <p>
+              Need a student account?{' '}
+              <Link to="/register" className="font-semibold text-pine">
+                Register here
+              </Link>
+            </p>
           ) : (
-            <p>New to StudyMatch?</p>
-          )}
-          {isAdminLogin ? (
-            <button type="button" onClick={() => switchRole('student')} className="font-semibold text-blue-600 hover:text-blue-700">
-              Switch to Student Login
-            </button>
-          ) : (
-            <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-700">
-              Create a student account
-            </Link>
+            <p>
+              New to StudyMatch?{' '}
+              <Link to="/register" className="font-semibold text-pine">
+                Create a student account
+              </Link>
+            </p>
           )}
         </div>
       </div>

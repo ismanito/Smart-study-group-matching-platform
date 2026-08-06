@@ -16,6 +16,9 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import SchedulePage from './pages/SchedulePage.jsx';
 import ConnectionsPage from './pages/ConnectionsPage.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import InterestSelectionPage from './pages/InterestSelectionPage.jsx';
+import InterestMatchesPage from './pages/InterestMatchesPage.jsx';
+import PeerProfilePage from './pages/PeerProfilePage.jsx';
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -29,7 +32,7 @@ function RequireAdmin({ children }) {
 
 function App() {
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-paper text-ink">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <Routes>
@@ -41,6 +44,9 @@ function App() {
           <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
           <Route path="/groups/:id" element={<RequireAuth><GroupDetailPage /></RequireAuth>} />
           <Route path="/match" element={<RequireAuth><MatchPage /></RequireAuth>} />
+          <Route path="/interests" element={<RequireAuth><InterestSelectionPage /></RequireAuth>} />
+          <Route path="/interest-matches" element={<RequireAuth><InterestMatchesPage /></RequireAuth>} />
+          <Route path="/peers/:id" element={<RequireAuth><PeerProfilePage /></RequireAuth>} />
           <Route path="/notes" element={<RequireAuth><NotesPage /></RequireAuth>} />
           <Route path="/courses" element={<RequireAuth><CoursesPage /></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />

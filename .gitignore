@@ -5,3 +5,7 @@ dist/
 .env
 .env.local
 .DS_Store
+backend/db/data/
+*.db
+*.db-shm
+*.db-wal

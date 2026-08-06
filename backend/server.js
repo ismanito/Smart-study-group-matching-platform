@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const store = require('./db/sqlite');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -52,6 +53,8 @@ const loginEvents = [];
 const errorReports = [];
 const passwordResetRequests = [];
 const notifications = [];
+const userInterests = []; // kept for runtime sync; source of truth is SQLite
+const interestCatalog = store.allInterests();
 const groups = [
   {
     id: 'group-cis301-evening',
@@ -176,6 +179,11 @@ const recordLogin = (user, meta = {}) => {
   if (loginEvents.length > 300) loginEvents.length = 300;
   user.lastLoginAt = event.timestamp;
   user.loginCount = (user.loginCount || 0) + 1;
+  try {
+    store.saveLogin(user);
+  } catch (_error) {
+    // Keep request flowing if persistence fails.
+  }
   return event;
 };
 
@@ -358,7 +366,38 @@ const enrollUserInUnit = (userId, unitId) => {
 };
 
 async function seedDemoData() {
-  if (users.length > 0) return;
+  if (store.userCount() > 0) {
+    users.splice(0, users.length, ...store.listUsers());
+    userInterests.length = 0;
+    store.listUsers().forEach((user) => {
+      store.myInterests(user.id).forEach((interest) => {
+        userInterests.push({
+          id: crypto.randomUUID(),
+          userId: user.id,
+          interestId: interest.id,
+        });
+      });
+    });
+
+    // Restore demo enrollments/groups into memory for known seed accounts
+    const demoMemberships = {
+      'user-maya': { unitIds: [1, 2], groupIds: ['group-cis301-evening'] },
+      'user-leo': { unitIds: [2, 3], groupIds: ['group-cis201-algorithms'] },
+      'user-sara': { unitIds: [1, 5], groupIds: ['group-cis301-evening'] },
+      'user-noah': { unitIds: [4, 2], groupIds: [] },
+      'user-aisha': { unitIds: [3, 1], groupIds: ['group-math201-foundations'] },
+      'user-jordan': { unitIds: [5, 4], groupIds: [] },
+    };
+    Object.entries(demoMemberships).forEach(([userId, meta]) => {
+      if (!findUserById(userId)) return;
+      meta.unitIds.forEach((unitId) => enrollUserInUnit(userId, unitId));
+      meta.groupIds.forEach((groupId) => {
+        const group = groups.find((item) => item.id === groupId);
+        if (group && !group.members.includes(userId)) group.members.push(userId);
+      });
+    });
+    return;
+  }
 
   const passwordHash = await bcrypt.hash('password123', 10);
   const adminHash = await bcrypt.hash('admin123', 10);
@@ -492,6 +531,37 @@ async function seedDemoData() {
       if (group && !group.members.includes(peer.id)) group.members.push(peer.id);
     });
   });
+
+  // Seed subject-interest selections for demo classmates (separate from free-text profile interests)
+  const demoSubjectInterests = {
+    'user-maya': ['int-cs', 'int-math', 'int-physics'],
+    'user-leo': ['int-math', 'int-engineering', 'int-physics'],
+    'user-sara': ['int-cs', 'int-economics', 'int-math'],
+    'user-noah': ['int-engineering', 'int-cs', 'int-physics'],
+    'user-aisha': ['int-math', 'int-biology', 'int-chemistry'],
+    'user-jordan': ['int-economics', 'int-cs', 'int-psychology'],
+  };
+  Object.entries(demoSubjectInterests).forEach(([userId, interestIds]) => {
+    interestIds.forEach((interestId) => {
+      userInterests.push({
+        id: crypto.randomUUID(),
+        userId,
+        interestId,
+      });
+    });
+  });
+
+  // Persist demo accounts + subject interests to SQLite
+  users.forEach((user) => {
+    if (!store.findUserById(user.id)) {
+      store.createUser(user);
+    }
+  });
+  userInterests.forEach((row) => {
+    if (!store.hasUserInterest(row.userId, row.interestId)) {
+      store.addUserInterest(row.id, row.userId, row.interestId);
+    }
+  });
 }
 
 // Authentication Routes
@@ -523,6 +593,7 @@ app.post('/api/auth/register', async (req, res) => {
     };
 
     users.push(user);
+    store.createUser(user);
     recordActivity(user.id, 'Welcome', 'Your StudyMatch account was created.');
     recordLogin(user, {
       ip: req.ip,
@@ -876,6 +947,12 @@ app.patch('/api/profile', verifyToken, (req, res) => {
   if (Array.isArray(req.body.interests)) user.interests = normalizeList(req.body.interests).slice(0, 8);
   if (Array.isArray(req.body.studyMethods)) user.studyMethods = normalizeList(req.body.studyMethods).slice(0, 8);
   if (Array.isArray(req.body.availability)) user.availability = normalizeAvailability(req.body.availability).slice(0, 14);
+
+  try {
+    store.updateProfile(user);
+  } catch (_error) {
+    // Keep in-memory profile even if DB write fails.
+  }
 
   recordActivity(user.id, 'Profile updated', 'You updated your study preferences and schedule.');
   res.json({ message: 'Profile saved.', profile: serializePublicProfile(user) });
@@ -2122,10 +2199,65 @@ app.get('/api/admin/stats', verifyToken, requireAdmin, (req, res) => {
   });
 });
 
+// ---- Subject interests (catalog + matching) ----
+app.get('/api/interests/all', (_req, res) => {
+  res.json(store.allInterests());
+});
+
+app.get('/api/interests/my-interests', verifyToken, (req, res) => {
+  res.json(store.myInterests(req.user.id));
+});
+
+app.post('/api/interests/add', verifyToken, (req, res) => {
+  const interestId = req.body.interestId || req.body.interest_id;
+  if (!interestId) {
+    return res.status(400).json({ message: 'interestId is required.' });
+  }
+
+  const interest = store.findInterest(interestId);
+  if (!interest) {
+    return res.status(404).json({ message: 'Interest not found.' });
+  }
+
+  if (store.hasUserInterest(req.user.id, interestId)) {
+    return res.status(409).json({ message: 'Interest already selected.' });
+  }
+
+  const rowId = crypto.randomUUID();
+  store.addUserInterest(rowId, req.user.id, interestId);
+  userInterests.push({ id: rowId, userId: req.user.id, interestId });
+
+  recordActivity(req.user.id, 'Interest added', `You added ${interest.name} to your subjects.`);
+  res.status(201).json({ message: 'Interest added.', interest });
+});
+
+app.delete('/api/interests/remove/:interestId', verifyToken, (req, res) => {
+  const removed = store.removeUserInterest(req.user.id, req.params.interestId);
+  if (!removed) {
+    return res.status(404).json({ message: 'Interest was not in your list.' });
+  }
+
+  const index = userInterests.findIndex(
+    (row) => row.userId === req.user.id && row.interestId === req.params.interestId
+  );
+  if (index !== -1) userInterests.splice(index, 1);
+
+  const interest = store.findInterest(req.params.interestId);
+  if (interest) {
+    recordActivity(req.user.id, 'Interest removed', `You removed ${interest.name} from your subjects.`);
+  }
+  res.json({ message: 'Interest removed.' });
+});
+
+app.get('/api/interests/find-matches', verifyToken, (req, res) => {
+  res.json(store.findInterestMatches(req.user.id));
+});
+
 seedDemoData()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Database file: ${store.path}`);
       console.log('Demo accounts: admin@studymatch.com / admin123');
       console.log('Classmates (password123): maya@example.com, leo@example.com, sara@example.com, noah@example.com, aisha@example.com, jordan@example.com');
     });

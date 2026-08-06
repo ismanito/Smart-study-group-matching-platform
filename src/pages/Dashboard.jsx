@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import UnitBadge from '../components/UnitBadge.jsx';
 
@@ -94,73 +95,77 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-3xl bg-white p-8 shadow-sm shadow-slate-200">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-blue-600">Welcome back</p>
-            <h1 className="mt-3 text-4xl font-semibold text-slate-900">
-              Hi, {user?.name ?? 'Student'}
-            </h1>
-          </div>
-          <div className="rounded-3xl bg-slate-50 px-5 py-4 text-slate-700 shadow-inner">
-            <p className="text-sm uppercase tracking-[0.3em] text-slate-500">Latest activity</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{activity.length}</p>
+      <section className="overflow-hidden rounded-2xl border border-paper-line bg-paper-card shadow-soft">
+        <div className="border-b border-paper-line bg-gradient-to-br from-pine/10 via-paper-card to-brass/10 px-8 py-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-pine">Welcome back</p>
+              <h1 className="mt-3 font-display text-4xl font-semibold text-ink">
+                {user?.name ?? 'Student'}
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-ink-muted">
+                Your study network, enrolled units, and recent updates — in one place.
+              </p>
+            </div>
+            <Link
+              to="/interests"
+              className="inline-flex items-center justify-center rounded-md bg-pine px-5 py-2.5 text-sm font-semibold text-paper-card transition hover:bg-pine-deep"
+            >
+              Choose study interests
+            </Link>
           </div>
         </div>
-        <p className="mt-4 max-w-2xl text-slate-600">
-          Here’s a quick overview of your study network, enrolled units, and recent updates.
-        </p>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-3">
-        <div className="rounded-3xl bg-white p-6 shadow-sm shadow-slate-200">
-          <p className="text-sm uppercase tracking-[0.28em] text-slate-500">My Groups</p>
-          <p className="mt-4 text-4xl font-semibold text-slate-900">{loading ? '–' : summary.groups}</p>
-          <p className="mt-2 text-sm text-slate-500">Active groups you’re a member of.</p>
-        </div>
-        <div className="rounded-3xl bg-white p-6 shadow-sm shadow-slate-200">
-          <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Connections</p>
-          <p className="mt-4 text-4xl font-semibold text-slate-900">{loading ? '–' : summary.peers}</p>
-          <p className="mt-2 text-sm text-slate-500">Mutual classmates you can study with.</p>
-        </div>
-        <div className="rounded-3xl bg-white p-6 shadow-sm shadow-slate-200">
-          <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Notes Uploaded</p>
-          <p className="mt-4 text-4xl font-semibold text-slate-900">{loading ? '–' : summary.notes}</p>
-          <p className="mt-2 text-sm text-slate-500">Your uploaded course notes.</p>
-        </div>
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          { label: 'My groups', value: summary.groups, hint: 'Active memberships' },
+          { label: 'Connections', value: summary.peers, hint: 'Mutual classmates' },
+          { label: 'Notes uploaded', value: summary.notes, hint: 'Shared course files' },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-2xl border border-paper-line bg-paper-card p-6 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-ink-muted">{stat.label}</p>
+            <p className="mt-3 font-display text-4xl font-semibold text-ink">{loading ? '–' : stat.value}</p>
+            <p className="mt-2 text-sm text-ink-muted">{stat.hint}</p>
+          </div>
+        ))}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <div className="rounded-3xl bg-white p-8 shadow-sm shadow-slate-200">
-          <div className="flex items-center justify-between">
+        <div className="rounded-2xl border border-paper-line bg-paper-card p-8 shadow-soft">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm uppercase tracking-[0.28em] text-slate-500">My Enrolled Units</p>
-              <h2 className="mt-3 text-2xl font-semibold text-slate-900">Manage your current units</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">Enrolled units</p>
+              <h2 className="mt-2 font-display text-2xl font-semibold text-ink">Current courses</h2>
             </div>
-            {loading && <span className="text-sm text-slate-400">Loading units…</span>}
+            {loading && <span className="text-sm text-ink-muted">Loading…</span>}
           </div>
 
           {error && (
-            <div className="my-6 rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
 
-          <div className="mt-8 space-y-4">
+          <div className="mt-8 space-y-3">
             {sortedUnits.length > 0 ? (
               sortedUnits.map((unit) => (
-                <div key={unit.id ?? unit.unitId ?? unit.code} className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                  key={unit.id ?? unit.unitId ?? unit.code}
+                  className="flex flex-col gap-4 rounded-xl border border-paper-line bg-paper px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
                       <UnitBadge code={unit.code ?? unit.unitCode ?? 'UNKNOWN'} />
-                      <p className="text-lg font-semibold text-slate-900">{unit.name ?? unit.title ?? 'Untitled unit'}</p>
+                      <p className="text-base font-semibold text-ink">{unit.name ?? unit.title ?? 'Untitled unit'}</p>
                     </div>
-                    <p className="mt-2 text-sm text-slate-600">{unit.description ?? 'Stay enrolled and improve your matching results.'}</p>
+                    <p className="mt-2 text-sm text-ink-muted">
+                      {unit.description ?? 'Stay enrolled to improve matching.'}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
                     {unit.enrolled ? (
-                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
-                        <span>✓</span>
+                      <span className="inline-flex items-center rounded-md bg-pine/10 px-3 py-1.5 text-sm font-semibold text-pine">
                         Enrolled
                       </span>
                     ) : (
@@ -168,7 +173,7 @@ export default function Dashboard() {
                         type="button"
                         onClick={() => enrollUnit(unit.id ?? unit.unitId)}
                         disabled={savingUnitId === (unit.id ?? unit.unitId)}
-                        className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                        className="rounded-md bg-pine px-4 py-2 text-sm font-semibold text-paper-card transition hover:bg-pine-deep disabled:cursor-not-allowed disabled:bg-ink-muted"
                       >
                         {savingUnitId === (unit.id ?? unit.unitId) ? 'Enrolling…' : 'Enroll'}
                       </button>
@@ -177,37 +182,46 @@ export default function Dashboard() {
                 </div>
               ))
             ) : (
-              <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-slate-600">
-                <p className="text-lg font-semibold text-slate-900">No units available yet</p>
-                <p className="mt-2">Enroll in units to improve your match recommendations and group invitations.</p>
+              <div className="rounded-xl border border-dashed border-paper-line bg-paper p-8 text-ink-muted">
+                <p className="font-semibold text-ink">No units available yet</p>
+                <p className="mt-2 text-sm">Enroll in units to improve match recommendations.</p>
               </div>
             )}
           </div>
         </div>
 
-        <aside className="rounded-3xl bg-white p-8 shadow-sm shadow-slate-200">
-          <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Recent Activity</p>
-          <h2 className="mt-3 text-2xl font-semibold text-slate-900">Latest updates</h2>
+        <aside className="rounded-2xl border border-paper-line bg-paper-card p-8 shadow-soft">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">Activity</p>
+          <h2 className="mt-2 font-display text-2xl font-semibold text-ink">Latest updates</h2>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 space-y-3">
             {loading ? (
               Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="animate-pulse rounded-3xl bg-slate-100 p-5" />
+                <div key={index} className="animate-pulse rounded-xl bg-paper p-5" />
               ))
             ) : activity.length > 0 ? (
               activity.map((item) => (
-                <div key={item.id ?? item.timestamp ?? item.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-semibold text-slate-900">{item.title ?? item.message ?? 'Recent activity'}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                <div
+                  key={item.id ?? item.timestamp ?? item.title}
+                  className="rounded-xl border border-paper-line bg-paper p-4"
+                >
+                  <p className="text-sm font-semibold text-ink">
+                    {item.title ?? item.message ?? 'Recent activity'}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-ink-muted">
                     {item.description ?? item.message ?? 'No additional details available.'}
                   </p>
-                  {item.timestamp && <p className="mt-3 text-xs uppercase tracking-[0.2em] text-slate-400">{new Date(item.timestamp).toLocaleDateString()}</p>}
+                  {item.timestamp && (
+                    <p className="mt-3 text-xs uppercase tracking-[0.16em] text-ink-muted">
+                      {new Date(item.timestamp).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               ))
             ) : (
-              <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-5 text-slate-600">
-                <p className="font-semibold text-slate-900">No recent activity</p>
-                <p className="mt-2">Once you interact with groups or upload notes, you’ll see your latest updates here.</p>
+              <div className="rounded-xl border border-dashed border-paper-line bg-paper p-5 text-ink-muted">
+                <p className="font-semibold text-ink">No recent activity</p>
+                <p className="mt-2 text-sm">Group and note activity will show up here.</p>
               </div>
             )}
           </div>

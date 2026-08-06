@@ -4,10 +4,15 @@
 
 :root {
   color-scheme: light;
+  --ink: #12151c;
+  --pine: #1f4a42;
+  --brass: #b0893d;
+  --paper: #f2f1ee;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-paper font-sans text-ink antialiased;
+  background-image: theme('backgroundImage.grain');
 }
 
 * {
@@ -15,15 +20,34 @@ body {
 }
 
 @layer base {
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+
   input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
   select,
   textarea {
-    @apply bg-white text-slate-900;
+    @apply bg-paper-card text-ink;
   }
 
   input::placeholder,
   textarea::placeholder {
-    @apply text-slate-400;
+    @apply text-ink-muted/70;
   }
 }
 
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-md bg-pine px-6 py-3 text-sm font-semibold text-paper-card transition hover:bg-pine-deep;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-md border border-paper-line bg-paper-card px-6 py-3 text-sm font-semibold text-ink transition hover:border-ink/30;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-paper-line bg-paper-card shadow-soft;
+  }
+}

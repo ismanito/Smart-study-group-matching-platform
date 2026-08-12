@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -9,32 +8,27 @@ import {
   Text,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import InterestButton from '../components/InterestButton';
+import { COLORS, SPACING } from '../theme';
 
-const COLORS = {
-  navy: '#1a3a52',
-  yellow: '#f5c518',
-  white: '#ffffff',
-  grayBorder: '#c5cdd5',
-  grayText: '#6b7c8a',
-  background: '#f4f7fa',
-  danger: '#c0392b',
-};
+const CACHE_KEY = 'studymatch.interests.cache';
 
 /**
- * InterestSelectionScreen
+ * InterestSelectionScreen — mobile interest picker with pull-to-refresh + cache.
  *
  * Props:
- *  - navigation (React Navigation)
- *  - apiBaseUrl (string) e.g. 'http://localhost:5000'
- *  - token (JWT string)
- *  - getAuthHeader optional () => ({ Authorization: `Bearer ${token}` })
+ *  - navigation
+ *  - apiBaseUrl (default http://localhost:5000)
+ *  - token (JWT)
+ *  - userName (optional greeting)
  */
 export default function InterestSelectionScreen({
   navigation,
   apiBaseUrl = 'http://localhost:5000',
   token,
-  getAuthHeader,
+  userName,
 }) {
   const [allInterests, setAllInterests] = useState([]);
   const [selected, setSelected] = useState([]);
@@ -43,63 +37,84 @@ export default function InterestSelectionScreen({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
-  const authHeaders = useMemo(() => {
-    if (typeof getAuthHeader === 'function') return getAuthHeader();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }, [getAuthHeader, token]);
-
+  const base = String(apiBaseUrl).replace(/\/$/, '');
   const client = useMemo(
     () =>
       axios.create({
-        baseURL: `${apiBaseUrl.replace(/\/$/, '')}/api/interests`,
-        headers: authHeaders,
+        baseURL: `${base}/api/interests`,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       }),
-    [apiBaseUrl, authHeaders]
+    [base, token]
   );
+
+  const persistCache = async (all, mine) => {
+    try {
+      await AsyncStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ all, mine, savedAt: Date.now() })
+      );
+    } catch (_err) {
+      // Cache is best-effort only.
+    }
+  };
+
+  const loadCache = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(CACHE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.all)) setAllInterests(parsed.all);
+      if (Array.isArray(parsed.mine)) setSelected(parsed.mine);
+    } catch (_err) {
+      // Ignore bad cache.
+    }
+  };
 
   const load = useCallback(async () => {
     setError('');
     try {
       const [allRes, mineRes] = await Promise.all([
-        axios.get(`${apiBaseUrl.replace(/\/$/, '')}/api/interests/all`),
+        axios.get(`${base}/api/interests/all`),
         client.get('/my-interests'),
       ]);
-      setAllInterests(Array.isArray(allRes.data) ? allRes.data : []);
-      setSelected(Array.isArray(mineRes.data) ? mineRes.data : []);
+      const all = Array.isArray(allRes.data) ? allRes.data : [];
+      const mine = Array.isArray(mineRes.data) ? mineRes.data : [];
+      setAllInterests(all);
+      setSelected(mine);
+      await persistCache(all, mine);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Unable to load interests.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [apiBaseUrl, client]);
+  }, [base, client]);
 
   useEffect(() => {
-    load();
+    loadCache().finally(load);
   }, [load]);
 
   const selectedIds = useMemo(
-    () => new Set(selected.map((item) => item.id)),
+    () => new Set(selected.map((item) => String(item.id))),
     [selected]
   );
 
   const available = useMemo(
-    () => allInterests.filter((item) => !selectedIds.has(item.id)),
+    () => allInterests.filter((item) => !selectedIds.has(String(item.id))),
     [allInterests, selectedIds]
   );
 
   const addInterest = async (interest) => {
     setBusyId(interest.id);
     setError('');
-    // Optimistic UI: disappear from available immediately
     setSelected((prev) =>
-      prev.some((item) => item.id === interest.id) ? prev : [...prev, interest]
+      prev.some((item) => String(item.id) === String(interest.id)) ? prev : [...prev, interest]
     );
     try {
       await client.post('/add', { interestId: interest.id });
     } catch (err) {
-      setSelected((prev) => prev.filter((item) => item.id !== interest.id));
-      Alert.alert('Could not add', err.response?.data?.message || err.message);
+      setSelected((prev) => prev.filter((item) => String(item.id) !== String(interest.id)));
+      setError(err.response?.data?.message || err.message || 'Unable to add interest.');
     } finally {
       setBusyId(null);
     }
@@ -108,25 +123,30 @@ export default function InterestSelectionScreen({
   const removeInterest = async (interest) => {
     setBusyId(interest.id);
     setError('');
-    setSelected((prev) => prev.filter((item) => item.id !== interest.id));
+    setSelected((prev) => prev.filter((item) => String(item.id) !== String(interest.id)));
     try {
       await client.delete(`/remove/${interest.id}`);
     } catch (err) {
       setSelected((prev) => [...prev, interest]);
-      Alert.alert('Could not remove', err.response?.data?.message || err.message);
+      setError(err.response?.data?.message || err.message || 'Unable to remove interest.');
     } finally {
       setBusyId(null);
     }
   };
 
-  const goToMatches = () => {
-    navigation.navigate('StudyGroupMatches', {
-      apiBaseUrl,
-      token,
-    });
+  const clearAll = async () => {
+    const previous = [...selected];
+    setSelected([]);
+    setError('');
+    try {
+      await Promise.all(previous.map((interest) => client.delete(`/remove/${interest.id}`)));
+    } catch (err) {
+      setSelected(previous);
+      setError(err.response?.data?.message || err.message || 'Unable to clear interests.');
+    }
   };
 
-  if (loading) {
+  if (loading && !allInterests.length) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.navy} />
@@ -150,70 +170,58 @@ export default function InterestSelectionScreen({
         />
       }
     >
-      <Text style={styles.title}>Your Interests</Text>
-      <Text style={styles.subtitle}>
-        Tap subjects you want to study. Selected ones move to your list.
-      </Text>
+      <Text style={styles.brand}>StudyMatch</Text>
+      <Text style={styles.title}>Welcome, {userName || 'Student'}!</Text>
+      <Text style={styles.step}>Step 1: Choose Your Interests</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Text style={styles.sectionTitle}>Your Selected Interests</Text>
-      {selected.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Text style={styles.muted}>No interests selected yet.</Text>
-        </View>
-      ) : (
-        <View style={styles.selectedWrap}>
-          {selected.map((interest) => (
-            <View key={interest.id} style={styles.selectedCard}>
-              <Text style={styles.selectedText}>
-                {interest.icon ? `${interest.icon} ` : ''}
-                {interest.name}
-              </Text>
-              <Pressable
-                onPress={() => removeInterest(interest)}
-                disabled={busyId === interest.id}
-                style={styles.removeBtn}
-                accessibilityRole="button"
-                accessibilityLabel={`Remove ${interest.name}`}
-              >
-                <Text style={styles.removeBtnText}>×</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
-      )}
-
-      <Text style={styles.sectionTitle}>Available Interests</Text>
+      <Text style={styles.sectionTitle}>Available</Text>
+      <View style={styles.grid}>
+        {available.map((interest) => (
+          <InterestButton
+            key={String(interest.id)}
+            interest={interest}
+            disabled={busyId === interest.id}
+            onPress={addInterest}
+          />
+        ))}
+      </View>
       {available.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Text style={styles.muted}>You’ve selected every interest.</Text>
-        </View>
+        <Text style={styles.muted}>You’ve selected every interest.</Text>
+      ) : null}
+
+      <View style={styles.rowBetween}>
+        <Text style={styles.sectionTitle}>Selected</Text>
+        {selected.length > 0 ? (
+          <Pressable onPress={clearAll} hitSlop={8}>
+            <Text style={styles.clear}>Clear All</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {selected.length === 0 ? (
+        <Text style={styles.empty}>No interests selected yet. Pick at least one subject.</Text>
       ) : (
-        <View style={styles.grid}>
-          {available.map((interest) => (
-            <Pressable
-              key={interest.id}
-              onPress={() => addInterest(interest)}
-              disabled={busyId === interest.id}
-              style={({ pressed }) => [
-                styles.availableChip,
-                pressed && styles.availableChipPressed,
-                busyId === interest.id && styles.chipBusy,
-              ]}
-            >
-              <Text style={styles.availableText}>
-                {interest.icon ? `${interest.icon} ` : ''}
-                {interest.name}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        selected.map((interest) => (
+          <InterestButton
+            key={String(interest.id)}
+            interest={interest}
+            selected
+            disabled={busyId === interest.id}
+            onRemove={removeInterest}
+          />
+        ))
       )}
 
       {selected.length > 0 ? (
-        <Pressable style={styles.cta} onPress={goToMatches}>
-          <Text style={styles.ctaText}>Find Study Groups</Text>
+        <Pressable
+          style={styles.primaryBtn}
+          onPress={() =>
+            navigation.navigate('StudyGroupMatches', { apiBaseUrl, token })
+          }
+        >
+          <Text style={styles.primaryText}>Find Study Groups</Text>
         </Pressable>
       ) : null}
     </ScrollView>
@@ -226,7 +234,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    padding: 20,
+    padding: SPACING.lg,
     paddingBottom: 40,
   },
   centered: {
@@ -236,114 +244,80 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     gap: 12,
   },
+  brand: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: COLORS.navy,
+  },
   title: {
-    fontSize: 28,
+    marginTop: 8,
+    fontSize: 24,
     fontWeight: '700',
     color: COLORS.navy,
-    marginBottom: 6,
   },
-  subtitle: {
-    fontSize: 15,
-    color: COLORS.grayText,
-    marginBottom: 20,
-    lineHeight: 22,
+  step: {
+    marginTop: 6,
+    marginBottom: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textLight,
   },
   sectionTitle: {
+    marginTop: 8,
+    marginBottom: 12,
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.navy,
-    marginTop: 12,
-    marginBottom: 12,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
   },
-  availableChip: {
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.grayBorder,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    minWidth: '46%',
-    flexGrow: 1,
-  },
-  availableChipPressed: {
-    opacity: 0.75,
-  },
-  availableText: {
-    color: COLORS.navy,
-    fontWeight: '600',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  selectedWrap: {
-    gap: 10,
-  },
-  selectedCard: {
-    backgroundColor: COLORS.navy,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+  rowBetween: {
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  selectedText: {
-    color: COLORS.white,
+  clear: {
+    color: COLORS.textLight,
     fontWeight: '600',
-    fontSize: 15,
-    flex: 1,
-    paddingRight: 10,
   },
-  removeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  empty: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+    color: COLORS.textLight,
+    marginBottom: 12,
+  },
+  muted: {
+    color: COLORS.textLight,
+    marginBottom: 12,
+  },
+  error: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#fdecea',
+    color: COLORS.danger,
+  },
+  primaryBtn: {
+    marginTop: 20,
+    minHeight: 48,
+    borderRadius: 10,
     backgroundColor: COLORS.yellow,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  removeBtnText: {
+  primaryText: {
     color: COLORS.navy,
-    fontSize: 22,
     fontWeight: '700',
-    lineHeight: 24,
-    marginTop: -2,
-  },
-  emptyBox: {
-    backgroundColor: COLORS.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.grayBorder,
-    padding: 18,
-    marginBottom: 4,
-  },
-  muted: {
-    color: COLORS.grayText,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  error: {
-    color: COLORS.danger,
-    marginBottom: 12,
-    fontSize: 14,
-  },
-  chipBusy: {
-    opacity: 0.5,
-  },
-  cta: {
-    marginTop: 28,
-    backgroundColor: COLORS.yellow,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  ctaText: {
-    color: COLORS.navy,
-    fontWeight: '800',
     fontSize: 16,
   },
 });

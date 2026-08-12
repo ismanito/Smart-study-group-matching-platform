@@ -16,8 +16,8 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import SchedulePage from './pages/SchedulePage.jsx';
 import ConnectionsPage from './pages/ConnectionsPage.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
-import InterestSelectionPage from './pages/InterestSelectionPage.jsx';
-import InterestMatchesPage from './pages/InterestMatchesPage.jsx';
+import InterestSelection from './pages/InterestSelection.jsx';
+import StudyGroupMatches from './pages/StudyGroupMatches.jsx';
 import PeerProfilePage from './pages/PeerProfilePage.jsx';
 
 function RequireAuth({ children }) {
@@ -44,8 +44,9 @@ function App() {
           <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
           <Route path="/groups/:id" element={<RequireAuth><GroupDetailPage /></RequireAuth>} />
           <Route path="/match" element={<RequireAuth><MatchPage /></RequireAuth>} />
-          <Route path="/interests" element={<RequireAuth><InterestSelectionPage /></RequireAuth>} />
-          <Route path="/interest-matches" element={<RequireAuth><InterestMatchesPage /></RequireAuth>} />
+          <Route path="/interests" element={<RequireAuth><InterestSelection /></RequireAuth>} />
+          <Route path="/study-matches" element={<RequireAuth><StudyGroupMatches /></RequireAuth>} />
+          <Route path="/interest-matches" element={<Navigate to="/study-matches" replace />} />
           <Route path="/peers/:id" element={<RequireAuth><PeerProfilePage /></RequireAuth>} />
           <Route path="/notes" element={<RequireAuth><NotesPage /></RequireAuth>} />
           <Route path="/courses" element={<RequireAuth><CoursesPage /></RequireAuth>} />

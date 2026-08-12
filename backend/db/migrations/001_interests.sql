@@ -1,28 +1,27 @@
--- Migration: interests + user_interests
--- Run against your PostgreSQL database after schema.sql
-
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- StudyMatch interests feature
+-- Compatible with this project's users.id (UUID).
+-- Interests use SERIAL as specified; user_id stays UUID to match schema.sql.
 
 CREATE TABLE IF NOT EXISTS interests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL UNIQUE,
-  icon TEXT NOT NULL
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) UNIQUE NOT NULL,
+  icon VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS user_interests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  interest_id UUID NOT NULL REFERENCES interests (id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT user_interests_unique_pair UNIQUE (user_id, interest_id)
+  id SERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  interest_id INTEGER NOT NULL REFERENCES interests(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, interest_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_interests_user_id ON user_interests (user_id);
 CREATE INDEX IF NOT EXISTS idx_user_interests_interest_id ON user_interests (interest_id);
 
--- 12 default interests with emoji icons
 INSERT INTO interests (name, icon) VALUES
-  ('Math', '📐'),
+  ('Mathematics', '📐'),
   ('Physics', '⚛️'),
   ('Chemistry', '🧪'),
   ('Biology', '🧬'),
@@ -31,7 +30,7 @@ INSERT INTO interests (name, icon) VALUES
   ('History', '🏛️'),
   ('Economics', '📊'),
   ('Psychology', '🧠'),
-  ('Engineering', '⚙️'),
+  ('Engineering', '🔧'),
   ('Art', '🎨'),
   ('Music', '🎵')
 ON CONFLICT (name) DO NOTHING;

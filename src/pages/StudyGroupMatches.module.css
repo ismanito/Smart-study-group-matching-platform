@@ -1,0 +1,171 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
+  color: #333333;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.brand {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #1a3a52;
+}
+
+.title {
+  margin: 8px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a3a52;
+}
+
+.lead {
+  margin: 10px 0 0;
+  max-width: 520px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #666666;
+}
+
+.backLink {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a3a52;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.error {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #f5c2c0;
+  background: #fdecea;
+  color: #c0392b;
+  font-size: 14px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+}
+
+.filterLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a3a52;
+}
+
+.select {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+  background: #f5f5f5;
+  color: #333333;
+  font-size: 14px;
+}
+
+.countHint {
+  margin: 0;
+  margin-left: auto;
+  font-size: 13px;
+  color: #666666;
+}
+
+.list {
+  display: grid;
+  gap: 16px;
+}
+
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px dashed #e0e0e0;
+}
+
+.empty h2 {
+  margin: 0;
+  color: #1a3a52;
+  font-size: 20px;
+}
+
+.empty p {
+  margin: 12px auto 0;
+  max-width: 420px;
+  color: #666666;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.secondaryBtn {
+  display: inline-flex;
+  margin-top: 20px;
+  min-height: 48px;
+  align-items: center;
+  padding: 0 20px;
+  border-radius: 10px;
+  background: #1a3a52;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 40vh;
+  color: #666666;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #e0e0e0;
+  border-top-color: #1a3a52;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 24px;
+  }
+
+  .countHint {
+    margin-left: 0;
+    width: 100%;
+  }
+}

@@ -8,22 +8,27 @@ fs.mkdirSync(dataDir, { recursive: true });
 const dbPath = path.join(dataDir, 'studymatch.json');
 
 const DEFAULT_INTERESTS = [
-  { id: 'int-math', name: 'Math', icon: '📐' },
-  { id: 'int-physics', name: 'Physics', icon: '⚛️' },
-  { id: 'int-chemistry', name: 'Chemistry', icon: '🧪' },
-  { id: 'int-biology', name: 'Biology', icon: '🧬' },
-  { id: 'int-cs', name: 'Computer Science', icon: '💻' },
-  { id: 'int-literature', name: 'Literature', icon: '📚' },
-  { id: 'int-history', name: 'History', icon: '🏛️' },
-  { id: 'int-economics', name: 'Economics', icon: '📊' },
-  { id: 'int-psychology', name: 'Psychology', icon: '🧠' },
-  { id: 'int-engineering', name: 'Engineering', icon: '⚙️' },
-  { id: 'int-art', name: 'Art', icon: '🎨' },
-  { id: 'int-music', name: 'Music', icon: '🎵' },
+  { id: 1, name: 'Mathematics', icon: '📐' },
+  { id: 2, name: 'Physics', icon: '⚛️' },
+  { id: 3, name: 'Chemistry', icon: '🧪' },
+  { id: 4, name: 'Biology', icon: '🧬' },
+  { id: 5, name: 'Computer Science', icon: '💻' },
+  { id: 6, name: 'Literature', icon: '📚' },
+  { id: 7, name: 'History', icon: '🏛️' },
+  { id: 8, name: 'Economics', icon: '📊' },
+  { id: 9, name: 'Psychology', icon: '🧠' },
+  { id: 10, name: 'Engineering', icon: '🔧' },
+  { id: 11, name: 'Art', icon: '🎨' },
+  { id: 12, name: 'Music', icon: '🎵' },
 ];
+
+function sameId(a, b) {
+  return String(a) === String(b);
+}
 
 function emptyState() {
   return {
+    version: 2,
     users: [],
     interests: DEFAULT_INTERESTS.map((item) => ({ ...item })),
     userInterests: [],
@@ -40,18 +45,21 @@ function loadState() {
   try {
     const parsed = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
     const state = {
+      version: parsed.version || 1,
       users: Array.isArray(parsed.users) ? parsed.users : [],
-      interests: Array.isArray(parsed.interests) && parsed.interests.length
-        ? parsed.interests
-        : DEFAULT_INTERESTS.map((item) => ({ ...item })),
+      interests: Array.isArray(parsed.interests) ? parsed.interests : [],
       userInterests: Array.isArray(parsed.userInterests) ? parsed.userInterests : [],
     };
 
-    const knownIds = new Set(state.interests.map((item) => item.id));
-    for (const interest of DEFAULT_INTERESTS) {
-      if (!knownIds.has(interest.id)) {
-        state.interests.push({ ...interest });
-      }
+    const needsCatalogUpgrade =
+      state.version < 2 ||
+      !state.interests.some((item) => item.name === 'Mathematics' && Number(item.id) === 1);
+
+    if (needsCatalogUpgrade) {
+      state.version = 2;
+      state.interests = DEFAULT_INTERESTS.map((item) => ({ ...item }));
+      state.userInterests = [];
+      fs.writeFileSync(dbPath, JSON.stringify(state, null, 2), 'utf8');
     }
 
     return state;
@@ -92,7 +100,7 @@ function mapUser(row) {
 }
 
 function findInterestById(id) {
-  return state.interests.find((item) => item.id === id) || null;
+  return state.interests.find((item) => sameId(item.id, id)) || null;
 }
 
 const api = {
@@ -195,16 +203,17 @@ const api = {
       .map((row) => row.interestId);
     return clone(
       state.interests
-        .filter((interest) => ids.includes(interest.id))
+        .filter((interest) => ids.some((id) => sameId(id, interest.id)))
         .sort((a, b) => a.name.localeCompare(b.name))
     );
   },
 
   addUserInterest(id, userId, interestId) {
+    const normalizedId = Number(interestId);
     state.userInterests.push({
       id: id || crypto.randomUUID(),
       userId,
-      interestId,
+      interestId: Number.isNaN(normalizedId) ? interestId : normalizedId,
       createdAt: new Date().toISOString(),
     });
     persist();
@@ -213,7 +222,7 @@ const api = {
   removeUserInterest(userId, interestId) {
     const before = state.userInterests.length;
     state.userInterests = state.userInterests.filter(
-      (row) => !(row.userId === userId && row.interestId === interestId)
+      (row) => !(row.userId === userId && sameId(row.interestId, interestId))
     );
     const changed = state.userInterests.length !== before;
     if (changed) persist();
@@ -221,21 +230,25 @@ const api = {
   },
 
   hasUserInterest(userId, interestId) {
-    return state.userInterests.some((row) => row.userId === userId && row.interestId === interestId);
+    return state.userInterests.some(
+      (row) => row.userId === userId && sameId(row.interestId, interestId)
+    );
   },
 
   findInterestMatches(userId) {
     const myIds = new Set(
-      state.userInterests.filter((row) => row.userId === userId).map((row) => row.interestId)
+      state.userInterests
+        .filter((row) => row.userId === userId)
+        .map((row) => String(row.interestId))
     );
 
     if (!myIds.size) return [];
 
     const byUser = new Map();
     for (const row of state.userInterests) {
-      if (row.userId === userId || !myIds.has(row.interestId)) continue;
+      if (row.userId === userId || !myIds.has(String(row.interestId))) continue;
       if (!byUser.has(row.userId)) byUser.set(row.userId, new Set());
-      byUser.get(row.userId).add(row.interestId);
+      byUser.get(row.userId).add(String(row.interestId));
     }
 
     const matches = [];
@@ -244,7 +257,7 @@ const api = {
       if (!peer || peer.role !== 'student' || peer.status === 'suspended') continue;
 
       const sharedInterests = state.interests
-        .filter((interest) => sharedIds.has(interest.id))
+        .filter((interest) => sharedIds.has(String(interest.id)))
         .sort((a, b) => a.name.localeCompare(b.name));
 
       matches.push({

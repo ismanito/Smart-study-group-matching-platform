@@ -3,7 +3,7 @@ const express = require('express');
 /**
  * Interests router (PostgreSQL).
  *
- * Usage in server.js:
+ * Wire in server.js when DATABASE_URL is set:
  *   const { Pool } = require('pg');
  *   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
  *   const createInterestsRouter = require('./routes/interests');
@@ -15,7 +15,6 @@ const express = require('express');
 function createInterestsRouter(pool, authenticate) {
   const router = express.Router();
 
-  // GET /api/interests/all — all catalog interests
   router.get('/all', async (_req, res) => {
     try {
       const { rows } = await pool.query(
@@ -28,7 +27,6 @@ function createInterestsRouter(pool, authenticate) {
     }
   });
 
-  // GET /api/interests/my-interests — current user's selections
   router.get('/my-interests', authenticate, async (req, res) => {
     try {
       const { rows } = await pool.query(
@@ -46,11 +44,11 @@ function createInterestsRouter(pool, authenticate) {
     }
   });
 
-  // POST /api/interests/add — body: { interestId }
   router.post('/add', authenticate, async (req, res) => {
     try {
-      const interestId = req.body.interestId || req.body.interest_id;
-      if (!interestId) {
+      const rawId = req.body.interestId ?? req.body.interest_id;
+      const interestId = Number(rawId);
+      if (!rawId || Number.isNaN(interestId)) {
         return res.status(400).json({ message: 'interestId is required.' });
       }
 
@@ -84,10 +82,13 @@ function createInterestsRouter(pool, authenticate) {
     }
   });
 
-  // DELETE /api/interests/remove/:interestId
   router.delete('/remove/:interestId', authenticate, async (req, res) => {
     try {
-      const { interestId } = req.params;
+      const interestId = Number(req.params.interestId);
+      if (Number.isNaN(interestId)) {
+        return res.status(400).json({ message: 'Invalid interestId.' });
+      }
+
       const result = await pool.query(
         `DELETE FROM user_interests
          WHERE user_id = $1 AND interest_id = $2
@@ -106,7 +107,6 @@ function createInterestsRouter(pool, authenticate) {
     }
   });
 
-  // GET /api/interests/find-matches — peers sorted by shared interest count
   router.get('/find-matches', authenticate, async (req, res) => {
     try {
       const mine = await pool.query(
@@ -118,6 +118,7 @@ function createInterestsRouter(pool, authenticate) {
         return res.json([]);
       }
 
+      // Supports both is_active (schema.sql) and status columns if present
       const { rows } = await pool.query(
         `SELECT
            u.id,
@@ -138,8 +139,9 @@ function createInterestsRouter(pool, authenticate) {
            SELECT interest_id FROM user_interests WHERE user_id = $1
          )
            AND ui.user_id <> $1
-           AND u.role = 'student'
-           AND u.is_active = TRUE
+           AND COALESCE(u.role, 'student') = 'student'
+           AND COALESCE(u.is_active, TRUE) = TRUE
+           AND COALESCE(u.status, 'active') <> 'suspended'
          GROUP BY u.id, u.name, u.email
          ORDER BY "sharedCount" DESC, u.name ASC`,
         [req.user.id]

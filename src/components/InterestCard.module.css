@@ -1,0 +1,106 @@
+.availableCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 120px;
+  padding: 16px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease;
+  font-family: inherit;
+  color: #333333;
+}
+
+.availableCard:hover:not(:disabled) {
+  transform: scale(1.04);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.availableCard:focus-visible {
+  outline: 2px solid #ffc107;
+  outline-offset: 2px;
+}
+
+.availableCard:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.selectedCard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #1a3a52;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.removeBtn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.removeBtn:hover:not(:disabled) {
+  background: #ffc107;
+  color: #1a3a52;
+}
+
+.removeBtn:focus-visible {
+  outline: 2px solid #ffc107;
+  outline-offset: 2px;
+}
+
+.removeBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fadeOut {
+  opacity: 0;
+  transform: scale(0.92);
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .availableCard {
+    min-height: 100px;
+  }
+}

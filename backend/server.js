@@ -533,13 +533,14 @@ async function seedDemoData() {
   });
 
   // Seed subject-interest selections for demo classmates (separate from free-text profile interests)
+  // Numeric interest ids match SERIAL catalog (1 Mathematics … 12 Music)
   const demoSubjectInterests = {
-    'user-maya': ['int-cs', 'int-math', 'int-physics'],
-    'user-leo': ['int-math', 'int-engineering', 'int-physics'],
-    'user-sara': ['int-cs', 'int-economics', 'int-math'],
-    'user-noah': ['int-engineering', 'int-cs', 'int-physics'],
-    'user-aisha': ['int-math', 'int-biology', 'int-chemistry'],
-    'user-jordan': ['int-economics', 'int-cs', 'int-psychology'],
+    'user-maya': [5, 1, 2],
+    'user-leo': [1, 10, 2],
+    'user-sara': [5, 8, 1],
+    'user-noah': [10, 5, 2],
+    'user-aisha': [1, 4, 3],
+    'user-jordan': [8, 5, 9],
   };
   Object.entries(demoSubjectInterests).forEach(([userId, interestIds]) => {
     interestIds.forEach((interestId) => {
@@ -2200,58 +2201,77 @@ app.get('/api/admin/stats', verifyToken, requireAdmin, (req, res) => {
 });
 
 // ---- Subject interests (catalog + matching) ----
-app.get('/api/interests/all', (_req, res) => {
-  res.json(store.allInterests());
-});
-
-app.get('/api/interests/my-interests', verifyToken, (req, res) => {
-  res.json(store.myInterests(req.user.id));
-});
-
-app.post('/api/interests/add', verifyToken, (req, res) => {
-  const interestId = req.body.interestId || req.body.interest_id;
-  if (!interestId) {
-    return res.status(400).json({ message: 'interestId is required.' });
+// Prefer PostgreSQL when DATABASE_URL is set; otherwise use the local JSON store.
+if (process.env.DATABASE_URL) {
+  try {
+    const { Pool } = require('pg');
+    const createInterestsRouter = require('./routes/interests');
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    app.use('/api/interests', createInterestsRouter(pool, verifyToken));
+    console.log('Interests API: PostgreSQL');
+  } catch (error) {
+    console.error('Failed to enable PostgreSQL interests router:', error.message);
+    console.log('Falling back to local interests store.');
+    mountLocalInterestsApi();
   }
+} else {
+  mountLocalInterestsApi();
+}
 
-  const interest = store.findInterest(interestId);
-  if (!interest) {
-    return res.status(404).json({ message: 'Interest not found.' });
-  }
+function mountLocalInterestsApi() {
+  app.get('/api/interests/all', (_req, res) => {
+    res.json(store.allInterests());
+  });
 
-  if (store.hasUserInterest(req.user.id, interestId)) {
-    return res.status(409).json({ message: 'Interest already selected.' });
-  }
+  app.get('/api/interests/my-interests', verifyToken, (req, res) => {
+    res.json(store.myInterests(req.user.id));
+  });
 
-  const rowId = crypto.randomUUID();
-  store.addUserInterest(rowId, req.user.id, interestId);
-  userInterests.push({ id: rowId, userId: req.user.id, interestId });
+  app.post('/api/interests/add', verifyToken, (req, res) => {
+    const interestId = req.body.interestId || req.body.interest_id;
+    if (interestId === undefined || interestId === null || interestId === '') {
+      return res.status(400).json({ message: 'interestId is required.' });
+    }
 
-  recordActivity(req.user.id, 'Interest added', `You added ${interest.name} to your subjects.`);
-  res.status(201).json({ message: 'Interest added.', interest });
-});
+    const interest = store.findInterest(interestId);
+    if (!interest) {
+      return res.status(404).json({ message: 'Interest not found.' });
+    }
 
-app.delete('/api/interests/remove/:interestId', verifyToken, (req, res) => {
-  const removed = store.removeUserInterest(req.user.id, req.params.interestId);
-  if (!removed) {
-    return res.status(404).json({ message: 'Interest was not in your list.' });
-  }
+    if (store.hasUserInterest(req.user.id, interestId)) {
+      return res.status(409).json({ message: 'Interest already selected.' });
+    }
 
-  const index = userInterests.findIndex(
-    (row) => row.userId === req.user.id && row.interestId === req.params.interestId
-  );
-  if (index !== -1) userInterests.splice(index, 1);
+    const rowId = crypto.randomUUID();
+    store.addUserInterest(rowId, req.user.id, interestId);
+    userInterests.push({ id: rowId, userId: req.user.id, interestId: interest.id });
 
-  const interest = store.findInterest(req.params.interestId);
-  if (interest) {
-    recordActivity(req.user.id, 'Interest removed', `You removed ${interest.name} from your subjects.`);
-  }
-  res.json({ message: 'Interest removed.' });
-});
+    recordActivity(req.user.id, 'Interest added', `You added ${interest.name} to your subjects.`);
+    res.status(201).json({ message: 'Interest added.', interest });
+  });
 
-app.get('/api/interests/find-matches', verifyToken, (req, res) => {
-  res.json(store.findInterestMatches(req.user.id));
-});
+  app.delete('/api/interests/remove/:interestId', verifyToken, (req, res) => {
+    const removed = store.removeUserInterest(req.user.id, req.params.interestId);
+    if (!removed) {
+      return res.status(404).json({ message: 'Interest was not in your list.' });
+    }
+
+    const index = userInterests.findIndex(
+      (row) => row.userId === req.user.id && String(row.interestId) === String(req.params.interestId)
+    );
+    if (index !== -1) userInterests.splice(index, 1);
+
+    const interest = store.findInterest(req.params.interestId);
+    if (interest) {
+      recordActivity(req.user.id, 'Interest removed', `You removed ${interest.name} from your subjects.`);
+    }
+    res.json({ message: 'Interest removed.' });
+  });
+
+  app.get('/api/interests/find-matches', verifyToken, (req, res) => {
+    res.json(store.findInterestMatches(req.user.id));
+  });
+}
 
 seedDemoData()
   .then(() => {

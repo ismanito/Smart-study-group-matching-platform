@@ -1,5 +1,7 @@
 # Smart Study Group Finder Platform
 
+**Live site:** [https://studymatch-hx12.onrender.com](https://studymatch-hx12.onrender.com)
+
 A modern web application that helps students find and create study groups based on shared courses, schedules, and learning goals.
 
 ## 🎯 Project Overview

@@ -108,10 +108,10 @@ export default function Dashboard() {
               </p>
             </div>
             <Link
-              to="/interests"
+              to="/match"
               className="inline-flex items-center justify-center rounded-md bg-pine px-5 py-2.5 text-sm font-semibold text-paper-card transition hover:bg-pine-deep"
             >
-              Choose study interests
+              Find peers
             </Link>
           </div>
         </div>
@@ -120,7 +120,7 @@ export default function Dashboard() {
       <section className="grid gap-4 md:grid-cols-3">
         {[
           { label: 'My groups', value: summary.groups, hint: 'Active memberships' },
-          { label: 'Connections', value: summary.peers, hint: 'Mutual classmates' },
+          { label: 'Matched peers', value: summary.peers, hint: 'Classmates you connected with' },
           { label: 'Notes uploaded', value: summary.notes, hint: 'Shared course files' },
         ].map((stat) => (
           <div key={stat.label} className="rounded-2xl border border-paper-line bg-paper-card p-6 shadow-soft">

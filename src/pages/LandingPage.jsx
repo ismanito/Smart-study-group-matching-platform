@@ -58,8 +58,8 @@ export default function LandingPage() {
             {[
               {
                 step: '01',
-                title: 'Set your profile',
-                copy: 'Add courses, subjects, and the hours you can actually meet.',
+                title: 'Create your account',
+                copy: 'Sign up, then choose your study interests once. After that you’re ready to match.',
               },
               {
                 step: '02',

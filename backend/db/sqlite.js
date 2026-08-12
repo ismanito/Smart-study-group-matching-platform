@@ -96,6 +96,8 @@ function mapUser(row) {
     loginCount: row.loginCount || 0,
     lastLoginAt: row.lastLoginAt ? new Date(row.lastLoginAt) : null,
     createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+    // Existing records without the flag are treated as already onboarded.
+    interestsOnboarded: row.interestsOnboarded !== false,
   };
 }
 
@@ -140,6 +142,7 @@ const api = {
       loginCount: user.loginCount || 0,
       lastLoginAt: user.lastLoginAt ? new Date(user.lastLoginAt).toISOString() : null,
       createdAt: (user.createdAt ? new Date(user.createdAt) : new Date()).toISOString(),
+      interestsOnboarded: user.interestsOnboarded !== false,
     };
 
     state.users.push(record);
@@ -170,7 +173,18 @@ const api = {
     row.interests = Array.isArray(user.interests) ? user.interests : [];
     row.studyMethods = Array.isArray(user.studyMethods) ? user.studyMethods : [];
     row.availability = Array.isArray(user.availability) ? user.availability : [];
+    if (typeof user.interestsOnboarded === 'boolean') {
+      row.interestsOnboarded = user.interestsOnboarded;
+    }
     persist();
+  },
+
+  setInterestsOnboarded(userId, value = true) {
+    const row = state.users.find((item) => item.id === userId);
+    if (!row) return false;
+    row.interestsOnboarded = Boolean(value);
+    persist();
+    return true;
   },
 
   updateUserAdmin(user) {

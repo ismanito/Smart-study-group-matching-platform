@@ -582,7 +582,7 @@ export default function AdminDashboard() {
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">Password reset OTPs</h2>
                 <p className="mt-2 text-slate-600">
-                  When a student uses Forgot password, send them a one-time OTP here so they can update their password.
+                  Students get an instant OTP on Forgot password. This list is for monitoring; you can still resend a code if needed.
                 </p>
               </div>
 

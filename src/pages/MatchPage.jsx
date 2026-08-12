@@ -144,10 +144,6 @@ export default function MatchPage() {
             Ranked by shared courses, interests, study methods, and overlapping free time. Connect when both of you match.
           </p>
         </div>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link to="/profile" className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">Update preferences</Link>
-          <Link to="/connections" className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">View connections</Link>
-        </div>
       </section>
 
       {inviteState.error && (
@@ -167,7 +163,7 @@ export default function MatchPage() {
         <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center text-slate-700">
           <p className="text-xl font-semibold text-slate-900">No new peers to review</p>
           <p className="mt-3 text-slate-600">
-            Enroll in courses and set interests/methods on your profile to unlock better matches.
+            Enroll in courses to unlock better matches with classmates in your units.
           </p>
         </div>
       ) : (
@@ -261,7 +257,7 @@ export default function MatchPage() {
             {waiting.map((peer) => (
               <div key={peer.id} className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4">
                 <p className="font-semibold text-slate-900">{peer.name}</p>
-                <p className="text-sm text-slate-600">They need to press Connect on your profile for notes & schedule sharing.</p>
+                <p className="text-sm text-slate-600">They need to press Connect on Find Peers for notes & schedule sharing.</p>
               </div>
             ))}
           </div>

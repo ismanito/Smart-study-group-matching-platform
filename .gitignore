@@ -6,6 +6,8 @@ dist/
 .env.local
 .DS_Store
 backend/db/data/
+backend/uploads/
 *.db
 *.db-shm
 *.db-wal
+

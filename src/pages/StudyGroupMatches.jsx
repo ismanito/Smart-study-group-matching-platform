@@ -67,11 +67,11 @@ export default function StudyGroupMatches() {
           <p className={styles.brand}>StudyMatch</p>
           <h1 className={styles.title}>Study Group Matches</h1>
           <p className={styles.lead}>
-            Classmates sorted by how many subjects you share. Open a profile to learn more.
+            Classmates sorted by how many subjects you share. Open a classmate card to learn more.
           </p>
         </div>
-        <Link to="/interests" className={styles.backLink}>
-          ← Back to Interests
+        <Link to="/match" className={styles.backLink}>
+          ← Find Peers
         </Link>
       </header>
 
@@ -111,11 +111,11 @@ export default function StudyGroupMatches() {
           <h2>No matches yet</h2>
           <p>
             {matches.length === 0
-              ? 'Add a few more interests, or check back when more students join StudyMatch.'
+              ? 'Check back when more students join StudyMatch, or enroll in more courses.'
               : 'No matches for that filter. Try another interest.'}
           </p>
-          <Link to="/interests" className={styles.secondaryBtn}>
-            Edit interests
+          <Link to="/match" className={styles.secondaryBtn}>
+            Go to Find Peers
           </Link>
         </div>
       ) : (

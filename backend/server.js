@@ -260,7 +260,21 @@ const createDefaultProfileFields = (overrides = {}) => ({
   interests: normalizeList(overrides.interests),
   studyMethods: normalizeList(overrides.studyMethods),
   availability: normalizeAvailability(overrides.availability),
+  interestsOnboarded: overrides.interestsOnboarded !== false,
 });
+
+const signAuthToken = (user) =>
+  jwt.sign(
+    {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      interestsOnboarded: user.interestsOnboarded !== false,
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
 
 const timeToMinutes = (value) => {
   const [hours, minutes] = String(value).split(':').map(Number);
@@ -416,6 +430,7 @@ async function seedDemoData() {
       bio: 'Platform administrator',
       interests: ['Career prep'],
       studyMethods: ['Online calls'],
+      interestsOnboarded: true,
     }),
   });
 
@@ -522,6 +537,7 @@ async function seedDemoData() {
         interests: peer.interests,
         studyMethods: peer.studyMethods,
         availability: peer.availability,
+        interestsOnboarded: true,
       }),
     });
 
@@ -579,7 +595,13 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const profile = createDefaultProfileFields({ bio, interests, studyMethods, availability });
+    const profile = createDefaultProfileFields({
+      bio,
+      interests,
+      studyMethods,
+      availability,
+      interestsOnboarded: false,
+    });
     const user = {
       id: `user-${crypto.randomUUID()}`,
       name,
@@ -601,9 +623,7 @@ app.post('/api/auth/register', async (req, res) => {
       userAgent: req.headers['user-agent'],
     });
 
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email, role: user.role }, JWT_SECRET, {
-      expiresIn: '7d',
-    });
+    const token = signAuthToken(user);
 
     res.status(201).json({
       message: 'Registration successful!',
@@ -660,14 +680,19 @@ app.post('/api/auth/login', async (req, res) => {
     });
     recordActivity(user.id, 'Signed in', `You signed in as ${user.role}.`);
 
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email, role: user.role }, JWT_SECRET, {
-      expiresIn: '7d',
-    });
+    const token = signAuthToken(user);
 
     res.json({
       message: 'Login successful!',
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        interestsOnboarded: user.interestsOnboarded !== false,
+      },
     });
   } catch (error) {
     recordError({
@@ -720,32 +745,38 @@ app.post('/api/auth/forgot-password', (req, res) => {
     }
   }
 
+  const otp = generateOtp();
+  const otpSentAt = new Date();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   const request = {
     id: crypto.randomUUID(),
     userId: user.id,
     name: user.name,
     email: user.email,
-    status: 'pending',
-    otp: null,
-    requestedAt: new Date(),
-    otpSentAt: null,
-    expiresAt: null,
+    status: 'otp_sent',
+    otp,
+    requestedAt: otpSentAt,
+    otpSentAt,
+    expiresAt,
     completedAt: null,
   };
   passwordResetRequests.unshift(request);
-  recordActivity(user.id, 'Password reset requested', 'You asked to reset your password. An admin will send an OTP.');
-  recordError({
-    title: 'Password reset requested',
-    message: `${user.name} (${user.email}) requested a password reset OTP.`,
-    source: 'user',
-    severity: 'medium',
+
+  recordNotification({
     userId: user.id,
-    pathName: '/api/auth/forgot-password',
+    email: user.email,
+    title: 'Password reset OTP',
+    message: `Your one-time code is ${otp}. Use it on the Forgot password page within 15 minutes.`,
+    type: 'otp',
+    otp,
   });
+  recordActivity(user.id, 'Password reset OTP issued', 'An instant password reset OTP was created for your account.');
 
   res.status(201).json({
-    message: 'Reset request submitted. Stay on this page — when an admin sends your OTP, it will appear as a notification here.',
+    message: 'OTP created. Enter the code below with your new password.',
     request: serializePasswordReset(request),
+    otp,
+    expiresAt,
   });
 });
 
@@ -2268,6 +2299,43 @@ function mountLocalInterestsApi() {
     res.json({ message: 'Interest removed.' });
   });
 
+  app.post('/api/interests/complete-onboarding', verifyToken, (req, res) => {
+    const user = findUserById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const selected = store.myInterests(req.user.id);
+    if (!selected.length) {
+      return res.status(400).json({ message: 'Pick at least one interest before continuing.' });
+    }
+
+    const studyMethods = normalizeList(req.body.studyMethods);
+    if (!studyMethods.length) {
+      return res.status(400).json({ message: 'Pick at least one study method before continuing.' });
+    }
+
+    user.interestsOnboarded = true;
+    user.interests = selected.map((item) => item.name);
+    user.studyMethods = studyMethods;
+    store.setInterestsOnboarded(user.id, true);
+    store.updateProfile(user);
+
+    recordActivity(user.id, 'Onboarding complete', 'You finished choosing interests and study methods.');
+    const token = signAuthToken(user);
+    res.json({
+      message: 'Preferences saved. Welcome to StudyMatch!',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        interestsOnboarded: true,
+      },
+    });
+  });
+
   app.get('/api/interests/find-matches', verifyToken, (req, res) => {
     res.json(store.findInterestMatches(req.user.id));
   });
@@ -2275,11 +2343,22 @@ function mountLocalInterestsApi() {
 
 seedDemoData()
   .then(() => {
+    const distPath = path.join(__dirname, '..', 'dist');
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get('*', (req, res, next) => {
+        if (req.path.startsWith('/api')) return next();
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
+
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
       console.log(`Database file: ${store.path}`);
-      console.log('Demo accounts: admin@studymatch.com / admin123');
-      console.log('Classmates (password123): maya@example.com, leo@example.com, sara@example.com, noah@example.com, aisha@example.com, jordan@example.com');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Demo accounts: admin@studymatch.com / admin123');
+        console.log('Classmates (password123): maya@example.com, leo@example.com, sara@example.com, noah@example.com, aisha@example.com, jordan@example.com');
+      }
     });
   })
   .catch((error) => {

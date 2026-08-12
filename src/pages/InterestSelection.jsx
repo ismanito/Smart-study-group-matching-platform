@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import InterestCard from '../components/InterestCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { STUDY_METHOD_OPTIONS } from '../data/studyPrefs.js';
 import useInterests from '../hooks/useInterests.js';
 import styles from './InterestSelection.module.css';
 
 export default function InterestSelection() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, token, login } = useAuth();
   const {
     selected,
     available,
@@ -18,6 +20,9 @@ export default function InterestSelection() {
     clearAll,
   } = useInterests();
   const [exitingId, setExitingId] = useState(null);
+  const [studyMethods, setStudyMethods] = useState([]);
+  const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState('');
 
   const handleSelect = async (interest) => {
     setExitingId(interest.id);
@@ -31,6 +36,44 @@ export default function InterestSelection() {
     window.setTimeout(() => {
       removeInterest(interest).finally(() => setExitingId(null));
     }, 220);
+  };
+
+  const toggleMethod = (method) => {
+    setStudyMethods((current) =>
+      current.includes(method)
+        ? current.filter((item) => item !== method)
+        : [...current, method].slice(0, 6)
+    );
+  };
+
+  const canContinue = selected.length > 0 && studyMethods.length > 0;
+
+  const handleContinue = async () => {
+    if (!canContinue || finishing) return;
+    setFinishing(true);
+    setFinishError('');
+    try {
+      const response = await fetch('/api/interests/complete-onboarding', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ studyMethods }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || 'Unable to finish setup.');
+      }
+      if (payload.token) {
+        login(payload.token);
+      }
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setFinishError(err.message || 'Unable to finish setup.');
+    } finally {
+      setFinishing(false);
+    }
   };
 
   if (loading) {
@@ -53,26 +96,24 @@ export default function InterestSelection() {
         <div>
           <p className={styles.brand}>StudyMatch</p>
           <h1 className={styles.title}>Welcome, {user?.name || 'Student'}!</h1>
-          <p className={styles.step}>Step 1: Choose Your Interests</p>
+          <p className={styles.step}>One-time setup: interests & study methods</p>
         </div>
-        <Link to="/dashboard" className={styles.backLink}>
-          ← Dashboard
-        </Link>
       </header>
 
       <p className={styles.lead}>
-        Tap a subject to add it. We’ll match you with classmates studying the same topics.
+        Choose what you study and how you like to learn. You’ll only do this once — matching uses these choices
+        automatically.
       </p>
 
-      {error && (
+      {(error || finishError) && (
         <div className={styles.error} role="alert">
-          {error}
+          {finishError || error}
         </div>
       )}
 
       <section className={styles.section} aria-labelledby="available-heading">
         <h2 id="available-heading" className={styles.sectionTitle}>
-          Available Interests
+          Study interests
         </h2>
         {available.length === 0 ? (
           <div className={styles.empty}>You’ve selected every interest. Nice coverage!</div>
@@ -96,7 +137,7 @@ export default function InterestSelection() {
       <section className={styles.section} aria-labelledby="selected-heading">
         <div className={styles.sectionRow}>
           <h2 id="selected-heading" className={styles.sectionTitle}>
-            Your Selected Interests
+            Your selected interests
           </h2>
           {selected.length > 0 && (
             <button type="button" className={styles.clearBtn} onClick={clearAll}>
@@ -106,9 +147,7 @@ export default function InterestSelection() {
         </div>
 
         {selected.length === 0 ? (
-          <div className={styles.empty}>
-            No interests selected yet. Pick at least one subject to find study groups.
-          </div>
+          <div className={styles.empty}>Pick at least one subject.</div>
         ) : (
           <div className={styles.selectedGrid} role="list">
             {selected.map((interest) => (
@@ -125,11 +164,42 @@ export default function InterestSelection() {
         )}
       </section>
 
-      {selected.length > 0 && (
+      <section className={styles.section} aria-labelledby="methods-heading">
+        <h2 id="methods-heading" className={styles.sectionTitle}>
+          How do you like to study?
+        </h2>
+        <p className={styles.lead}>Pick one or more methods that fit you best.</p>
+        <div className={styles.methodGrid} role="list">
+          {STUDY_METHOD_OPTIONS.map((method) => {
+            const active = studyMethods.includes(method);
+            return (
+              <button
+                key={method}
+                type="button"
+                role="listitem"
+                onClick={() => toggleMethod(method)}
+                className={`${styles.methodChip} ${active ? styles.methodChipActive : ''}`}
+              >
+                {method}
+              </button>
+            );
+          })}
+        </div>
+        {studyMethods.length === 0 && (
+          <div className={styles.empty}>Pick at least one study method to continue.</div>
+        )}
+      </section>
+
+      {canContinue && (
         <div className={styles.actions}>
-          <Link to="/study-matches" className={styles.primaryBtn}>
-            Find Study Groups
-          </Link>
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            onClick={handleContinue}
+            disabled={finishing}
+          >
+            {finishing ? 'Saving…' : 'Continue to StudyMatch'}
+          </button>
         </div>
       )}
     </div>

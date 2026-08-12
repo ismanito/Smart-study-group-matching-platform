@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { INTEREST_OPTIONS, STUDY_METHOD_OPTIONS } from '../data/studyPrefs.js';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -11,20 +10,22 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    interests: [],
-    studyMethods: [],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user) {
-      navigate(isAdmin() ? '/admin' : '/dashboard', { replace: true });
+    if (!user) return;
+    if (isAdmin()) {
+      navigate('/admin', { replace: true });
+      return;
     }
+    navigate(user.interestsOnboarded === false ? '/interests' : '/dashboard', { replace: true });
   }, [user, isAdmin, navigate]);
 
   if (user) {
-    return <Navigate to={isAdmin() ? '/admin' : '/dashboard'} replace />;
+    if (isAdmin()) return <Navigate to="/admin" replace />;
+    return <Navigate to={user.interestsOnboarded === false ? '/interests' : '/dashboard'} replace />;
   }
 
   const handleChange = (event) => {
@@ -58,8 +59,6 @@ export default function RegisterPage() {
           email: formData.email,
           password: formData.password,
           role: 'student',
-          interests: formData.interests,
-          studyMethods: formData.studyMethods,
         }),
       });
 
@@ -75,7 +74,7 @@ export default function RegisterPage() {
       }
 
       login(payload.token);
-      navigate('/profile');
+      navigate('/interests');
     } catch (fetchError) {
       setError(fetchError.message || 'Unable to connect to the server. Please try again later.');
     } finally {
@@ -85,11 +84,13 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 py-16 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-3xl rounded-3xl bg-white p-10 shadow-xl shadow-slate-200">
+      <div className="mx-auto w-full max-w-xl rounded-3xl bg-white p-10 shadow-xl shadow-slate-200">
         <div className="mb-8 text-center">
           <p className="text-sm uppercase tracking-[0.3em] text-blue-600">Create your account</p>
           <h1 className="mt-4 text-4xl font-bold text-slate-900">Register for StudyMatch</h1>
-          <p className="mt-3 text-slate-600">Join your study community and start collaborating with peers today.</p>
+          <p className="mt-3 text-slate-600">
+            Create your account first. Next you’ll pick study interests once — then you’re in.
+          </p>
         </div>
 
         <form className="space-y-6" onSubmit={handleSubmit}>
@@ -156,62 +157,6 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div>
-            <p className="text-sm font-medium text-slate-700">Interests (pick a few)</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {INTEREST_OPTIONS.slice(0, 6).map((interest) => {
-                const active = formData.interests.includes(interest);
-                return (
-                  <button
-                    key={interest}
-                    type="button"
-                    onClick={() =>
-                      setFormData((current) => ({
-                        ...current,
-                        interests: active
-                          ? current.interests.filter((item) => item !== interest)
-                          : [...current.interests, interest].slice(0, 5),
-                      }))
-                    }
-                    className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-                      active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    {interest}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm font-medium text-slate-700">Study methods</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {STUDY_METHOD_OPTIONS.slice(0, 6).map((method) => {
-                const active = formData.studyMethods.includes(method);
-                return (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() =>
-                      setFormData((current) => ({
-                        ...current,
-                        studyMethods: active
-                          ? current.studyMethods.filter((item) => item !== method)
-                          : [...current.studyMethods, method].slice(0, 5),
-                      }))
-                    }
-                    className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-                      active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    {method}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {error && (
             <p className="rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
           )}
@@ -224,7 +169,7 @@ export default function RegisterPage() {
             {loading ? (
               <span className="flex items-center gap-3">
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Registering...
+                Creating account…
               </span>
             ) : (
               'Create Account'

@@ -8,9 +8,10 @@ function Navbar() {
   const [notifications, setNotifications] = useState([]);
   const { user, token, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const onboarding = Boolean(user) && !isAdmin() && user.interestsOnboarded === false;
 
   useEffect(() => {
-    if (!token) {
+    if (!token || onboarding) {
       setNotifications([]);
       return undefined;
     }
@@ -36,7 +37,7 @@ function Navbar() {
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [token]);
+  }, [token, onboarding]);
 
   const handleLogout = () => {
     logout();
@@ -45,18 +46,17 @@ function Navbar() {
 
   const unreadCount = notifications.filter((item) => !item.read).length;
 
-  const navItems = user
-    ? [
-        { label: 'Dashboard', path: '/dashboard' },
-        { label: 'Courses', path: '/courses' },
-        { label: 'Profile', path: '/profile' },
-        { label: 'Find Peers', path: '/match' },
-        { label: 'Connections', path: '/connections' },
-        { label: 'Groups', path: '/groups' },
-        { label: 'Notes', path: '/notes' },
-        { label: 'Schedule', path: '/schedule' },
-      ]
-    : [];
+  const navItems =
+    user && !onboarding
+      ? [
+          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Courses', path: '/courses' },
+          { label: 'Find Peers', path: '/match' },
+          { label: 'Groups', path: '/groups' },
+          { label: 'Notes', path: '/notes' },
+          { label: 'Schedule', path: '/schedule' },
+        ]
+      : [];
 
   if (user && isAdmin()) {
     navItems.push({ label: 'Admin', path: '/admin' });
@@ -65,7 +65,10 @@ function Navbar() {
   return (
     <header className="border-b border-paper-line bg-paper-card/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link to="/" className="font-display text-xl font-semibold tracking-tight text-ink">
+        <Link
+          to={onboarding ? '/interests' : '/'}
+          className="font-display text-xl font-semibold tracking-tight text-ink"
+        >
           StudyMatch
         </Link>
 
@@ -88,19 +91,21 @@ function Navbar() {
 
           {user ? (
             <div className="relative hidden items-center gap-2 md:flex">
-              <button
-                type="button"
-                onClick={() => setNotificationsOpen((open) => !open)}
-                className="relative rounded-md border border-paper-line bg-paper-card px-3 py-2 text-sm font-semibold text-ink-soft hover:bg-paper"
-                aria-label="Notifications"
-              >
-                Alerts
-                {unreadCount > 0 && (
-                  <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-brass px-1 text-xs font-bold text-ink">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
+              {!onboarding && (
+                <button
+                  type="button"
+                  onClick={() => setNotificationsOpen((open) => !open)}
+                  className="relative rounded-md border border-paper-line bg-paper-card px-3 py-2 text-sm font-semibold text-ink-soft hover:bg-paper"
+                  aria-label="Notifications"
+                >
+                  Alerts
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-brass px-1 text-xs font-bold text-ink">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              )}
               {notificationsOpen && (
                 <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-paper-line bg-paper-card p-4 shadow-soft">
                   <p className="font-display text-sm font-semibold text-ink">Notifications</p>
@@ -137,20 +142,22 @@ function Navbar() {
             </Link>
           )}
 
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-paper-line bg-paper-card text-ink lg:hidden"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-label="Toggle navigation"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
-          </button>
+          {!onboarding && (
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-paper-line bg-paper-card text-ink lg:hidden"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label="Toggle navigation"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
-      {menuOpen && (
+      {menuOpen && !onboarding && (
         <div className="border-t border-paper-line bg-paper lg:hidden">
           <div className="space-y-1 px-4 py-4">
             {navItems.map((item) => (

@@ -147,12 +147,14 @@
   justify-content: center;
   min-height: 48px;
   padding: 0 28px;
+  border: none;
   border-radius: 10px;
   background: #ffc107;
   color: #1a3a52;
   font-size: 16px;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease, filter 0.3s ease;
 }
@@ -162,9 +164,44 @@
   filter: brightness(0.97);
 }
 
+.primaryBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .primaryBtn:focus-visible {
   outline: 2px solid #1a3a52;
   outline-offset: 2px;
+}
+
+.methodGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.methodChip {
+  border: 1px solid #d7dde3;
+  border-radius: 999px;
+  background: #fff;
+  color: #1a3a52;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.methodChip:hover {
+  border-color: #1a3a52;
+}
+
+.methodChipActive {
+  background: #1a3a52;
+  border-color: #1a3a52;
+  color: #fff;
 }
 
 .skeletonHeader {

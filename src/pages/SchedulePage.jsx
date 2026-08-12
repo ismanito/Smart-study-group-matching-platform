@@ -41,11 +41,8 @@ export default function SchedulePage() {
         <p className="text-sm uppercase tracking-[0.3em] text-blue-600">Schedule sync</p>
         <h1 className="mt-2 text-4xl font-semibold text-slate-900">Align study time</h1>
         <p className="mt-3 max-w-2xl text-slate-600">
-          Compare your free slots with connected classmates and pick overlap times that work for both of you.
+          Compare free slots with classmates you’ve connected with on Find Peers, and pick overlap times that work for both of you.
         </p>
-        <Link to="/profile" className="mt-5 inline-flex rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-          Edit my availability
-        </Link>
       </section>
 
       {error && <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">{error}</div>}
@@ -70,7 +67,7 @@ export default function SchedulePage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-slate-900">Aligned with connections</h2>
+            <h2 className="text-2xl font-semibold text-slate-900">Aligned with connected peers</h2>
             {alignments.length > 0 ? (
               alignments.map((item) => (
                 <article key={item.peer.id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

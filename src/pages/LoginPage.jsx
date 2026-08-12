@@ -11,13 +11,17 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user) {
-      navigate(isAdmin() ? '/admin' : '/dashboard', { replace: true });
+    if (!user) return;
+    if (isAdmin()) {
+      navigate('/admin', { replace: true });
+      return;
     }
+    navigate(user.interestsOnboarded === false ? '/interests' : '/dashboard', { replace: true });
   }, [user, isAdmin, navigate]);
 
   if (user) {
-    return <Navigate to={isAdmin() ? '/admin' : '/dashboard'} replace />;
+    if (isAdmin()) return <Navigate to="/admin" replace />;
+    return <Navigate to={user.interestsOnboarded === false ? '/interests' : '/dashboard'} replace />;
   }
 
   const handleChange = (event) => {
@@ -61,7 +65,13 @@ export default function LoginPage() {
       }
 
       const sessionUser = login(payload.token);
-      navigate(sessionUser.role === 'admin' ? '/admin' : '/dashboard');
+      if (sessionUser.role === 'admin') {
+        navigate('/admin');
+      } else if (sessionUser.interestsOnboarded === false) {
+        navigate('/interests');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (fetchError) {
       setError(fetchError.message || 'Unable to connect to the server. Please try again later.');
     } finally {
@@ -81,7 +91,7 @@ export default function LoginPage() {
           </h1>
           <p className="mt-3 text-sm leading-6 text-ink-muted">
             {isAdminLogin
-              ? 'Manage students, courses, password OTPs, and platform issues.'
+              ? 'Manage students, courses, and platform issues.'
               : 'Access your courses, peers, notes, and study schedule.'}
           </p>
         </div>
@@ -106,18 +116,6 @@ export default function LoginPage() {
             Admin
           </button>
         </div>
-
-        <p className="mb-6 rounded-lg border border-paper-line bg-paper px-4 py-3 text-sm text-ink-muted">
-          {isAdminLogin ? (
-            <>
-              Demo admin: <span className="font-medium text-ink">admin@studymatch.com / admin123</span>
-            </>
-          ) : (
-            <>
-              Try <span className="font-medium text-ink">maya@example.com / password123</span>
-            </>
-          )}
-        </p>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
